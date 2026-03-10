@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkup Diagnostico SV — Migastone</title>
+  <style>
+    :root {
+      --blu: #1B3A6B;
+      --giallo: #F5C842;
+      --sfondo: #F2F2F2;
+      --testo: #1A1A1A;
+      --rosso: #C00000;
+      --verde: #27AE60;
+      --rosso-dark: #8B0000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--sfondo);
+      color: var(--testo);
+      padding-top: 70px;
+    }
+
+    /* TOP BAR */
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--blu);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 1000;
+      gap: 12px;
+    }
+
+    #topbar-title {
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #progress-wrap {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    #progress-label {
+      color: #fff;
+      font-size: 11px;
+      opacity: .85;
+    }
+
+    #progress-bar-outer {
+      width: 100%;
+      max-width: 320px;
+      height: 8px;
+      background: rgba(255, 255, 255, .25);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    #progress-bar-inner {
+      height: 100%;
+      background: var(--giallo);
+      border-radius: 4px;
+      transition: width .4s;
+    }
+
+    #btn-reset {
+      background: var(--rosso-dark);
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    #btn-reset:hover {
+      opacity: .85;
+    }
+
+    #btn-test {
+      background: transparent;
+      color: var(--giallo);
+      border: 1.5px solid var(--giallo);
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: .3px;
+      transition: opacity .2s;
+    }
+
+    #btn-test:disabled {
+      opacity: .3;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    #btn-test:not(:disabled):hover {
+      background: rgba(245, 200, 66, .15);
+    }
+
+    #btn-test.testing {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    /* MODAL TEST */
+    #test-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .55);
+      z-index: 3000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #test-modal-overlay.open {
+      display: flex;
+    }
+
+    #test-modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 30px;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, .3);
+    }
+
+    #test-modal .modal-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    #test-modal .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    #test-modal .modal-detail {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    #test-modal .modal-ok .modal-title {
+      color: var(--verde);
+    }
+
+    #test-modal .modal-ko .modal-title {
+      color: var(--rosso);
+    }
+
+    #btn-modal-close {
+      background: var(--blu);
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #btn-modal-close:hover {
+      opacity: .85;
+    }
+
+    /* TOAST */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s;
+      z-index: 2000;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    /* CONTAINER */
+    #app {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    /* SECTIONS */
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section-header {
+      margin-bottom: 22px;
+    }
+
+    .section-header h2 {
+      color: var(--blu);
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .section-header p {
+      color: #555;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    /* FORM FIELDS */
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: var(--testo);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #ccc;
+      border-radius: 7px;
+      font-size: 14px;
+      background: #fff;
+      transition: border-color .2s;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: var(--blu);
+    }
+
+    .field input.error,
+    .field select.error,
+    .field textarea.error {
+      border-color: var(--rosso);
+    }
+
+    .field textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .input-euro-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .euro-prefix {
+      position: absolute;
+      left: 12px;
+      color: #555;
+      font-weight: 600;
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .input-euro-wrap input {
+      padding-left: 26px !important;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media(max-width:560px) {
+      .field-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* BOX CALCOLI */
+    .box-calcoli {
+      background: var(--blu);
+      color: #fff;
+      border: 4px solid var(--giallo);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .box-calcoli h3 {
+      font-size: 15px;
+      margin-bottom: 14px;
+      letter-spacing: .5px;
+    }
+
+    .calc-item {
+      margin-bottom: 16px;
+    }
+
+    .calc-label {
+      font-size: 12px;
+      opacity: .8;
+      margin-bottom: 4px;
+    }
+
+    .calc-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--giallo);
+    }
+
+    .coach-script {
+      color: var(--giallo);
+      font-size: 12px;
+      line-height: 1.6;
+      margin-top: 8px;
+      border-top: 1px solid rgba(245, 200, 66, .3);
+      padding-top: 8px;
+    }
+
+    /* BOX STOICA */
+    .box-stoica {
+      background: #fff;
+      border-left: 4px solid var(--blu);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 16px;
+      margin: 16px 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #444;
+    }
+
+    /* BOX DOMANDE */
+    .box-domande {
+      background: #EBF3FF;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+
+    .box-domande h4 {
+      color: var(--blu);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .box-domande ol {
+      padding-left: 18px;
+    }
+
+    .box-domande li {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    /* SLIDERS */
+    .slider-wrap {
+      margin: 12px 0;
+    }
+
+    .slider-wrap label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .slider-wrap input[type=range] {
+      width: 100%;
+      accent-color: var(--blu);
+    }
+
+    .slider-hint {
+      font-size: 11px;
+      color: #777;
+      margin-top: 3px;
+    }
+
+    .gap-display {
+      margin: 12px 0;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge-red {
+      background: var(--rosso);
+      color: #fff;
+    }
+
+    .badge-orange {
+      background: #E67E22;
+      color: #fff;
+    }
+
+    .badge-gray {
+      background: #aaa;
+      color: #fff;
+    }
+
+    /* BOX GAP SCRIPT */
+    .box-gap-script {
+      background: #FFFBE6;
+      border: 1px solid var(--giallo);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 10px 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #444;
+    }
+
+    /* NAVIGATION */
+    .nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 28px;
+      gap: 12px;
+    }
+
+    .btn-nav {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn-back {
+      background: #ddd;
+      color: #333;
+    }
+
+    .btn-next {
+      background: var(--blu);
+      color: #fff;
+      min-width: 180px;
+    }
+
+    .btn-next:hover,
+    .btn-back:hover {
+      opacity: .85;
+    }
+
+    .btn-submit {
+      background: var(--blu);
+      color: #fff;
+      border: 3px solid var(--giallo);
+      padding: 14px 32px;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 20px;
+      transition: opacity .2s;
+    }
+
+    .btn-submit:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    /* RIEPILOGO */
+    .recap-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 14px 0;
+    }
+
+    .recap-table td,
+    .recap-table th {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    .recap-table th {
+      background: var(--blu);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .recap-table tr:nth-child(even) td {
+      background: #f7f7f7;
+    }
+
+    .box-diagnosi {
+      background: var(--blu);
+      color: #fff;
+      border-radius: 10px;
+      padding: 22px;
+      margin: 18px 0;
+    }
+
+    .box-diagnosi h3 {
+      color: var(--giallo);
+      margin-bottom: 14px;
+      font-size: 16px;
+    }
+
+    .diagnosi-row {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .diagnosi-row span {
+      color: var(--giallo);
+      font-weight: 700;
+    }
+
+    /* SEGNALI */
+    .box-segnali {
+      background: #fff;
+      border: 2px solid var(--giallo);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .box-segnali h4 {
+      color: var(--blu);
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .check-item input {
+      margin-top: 2px;
+      accent-color: var(--blu);
+    }
+
+    /* SCRIPT CHIUSURA */
+    .box-chiusura {
+      background: var(--giallo);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #111;
+    }
+
+    /* SUCCESS / ERROR */
+    .box-success {
+      background: #D4EDDA;
+      border: 2px solid var(--verde);
+      border-radius: 8px;
+      padding: 16px;
+      color: #155724;
+      font-weight: 700;
+      display: none;
+      margin-top: 14px;
+    }
+
+    .box-error {
+      background: #F8D7DA;
+      border: 2px solid var(--rosso);
+      border-radius: 8px;
+      padding: 16px;
+      color: #721c24;
+      font-weight: 700;
+      display: none;
+      margin-top: 14px;
+    }
+
+    .spinner {
+      display: none;
+      text-align: center;
+      padding: 14px;
+      color: var(--blu);
+      font-weight: 600;
+    }
+
+    .spinner::before {
+      content: "⏳ ";
+    }
+
+    /* PIPELINE CALC */
+    .box-pipeline-calc {
+      background: #FFF3CD;
+      border: 2px solid #E67E22;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 14px 0;
+      font-size: 14px;
+    }
+
+    .box-pipeline-calc .pipeline-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #E67E22;
+      margin: 6px 0;
+    }
+
+    /* DOMANDE COACH CON INPUT */
+    .domanda-coach {
+      margin-bottom: 20px;
+    }
+
+    .domanda-coach label strong {
+      display: block;
+      font-size: 14px;
+      color: #1B3A6B;
+      margin-bottom: 4px;
+    }
+
+    .nota-coach {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+      margin-bottom: 6px;
+    }
+
+    .domanda-coach textarea,
+    .domanda-coach input[type="number"] {
+      width: 100%;
+      border: 1px solid #CCC;
+      border-radius: 4px;
+      padding: 8px;
+      font-size: 14px;
+      font-family: system-ui, Arial, sans-serif;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+
+    .domanda-coach textarea:focus,
+    .domanda-coach input[type="number"]:focus {
+      outline: none;
+      border-color: #1B3A6B;
+      box-shadow: 0 0 0 2px rgba(27, 58, 107, .15);
+    }
+
+    .calcolo-live {
+      background: #1B3A6B;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 4px;
+      border-left: 4px solid #F5C842;
+      margin: 8px 0 16px 0;
+      font-size: 14px;
+    }
+
+    .calcolo-live strong {
+      color: #F5C842;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .calcolo-live .coach-sub {
+      font-size: 12px;
+      color: #F5C842;
+      margin-top: 6px;
+      font-style: italic;
+      border-top: 1px solid rgba(245, 200, 66, .3);
+      padding-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div id="topbar-title">⚡ Checkup SV</div>
+    <div id="progress-wrap">
+      <div id="progress-label">Sezione 1 di 7</div>
+      <div id="progress-bar-outer">
+        <div id="progress-bar-inner" style="width:14%"></div>
+      </div>
+    </div>
+    <button id="btn-test" onclick="testConnection()" disabled title="Seleziona prima il consulente">🔌 TEST</button>
+    <button id="btn-reset" onclick="resetSession()">🗑️ Cancella sessione</button>
+  </div>
+
+  <!-- MODAL TEST CONNECTION -->
+  <div id="test-modal-overlay" onclick="closeTestModal(event)">
+    <div id="test-modal">
+      <div class="modal-icon" id="modal-icon"></div>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-detail" id="modal-detail"></div>
+      <button id="btn-modal-close" onclick="closeTestModal()">Chiudi</button>
+    </div>
+  </div>
+
+  <div id="app">
+
+    <!-- SEZIONE 0 -->
+    <div class="section active" id="sec0">
+      <div class="section-header">
+        <h2>👤 Chi sta conducendo questa call?</h2>
+      </div>
+      <div class="field">
+        <label for="consulente">Consulente *</label>
+        <select id="consulente">
+          <option value="">— Seleziona consulente —</option>
+          <option value="Russo Marica|m.russo@migastone.com">Russo Marica</option>
+          <option value="Chiarolanza Roberto|r.chiarolanza@migastone.com">Chiarolanza Roberto</option>
+          <option value="Coslop Walter|w.coslop@migastone.com">Coslop Walter</option>
+          <option value="Dalvit Oscar|o.dalvit@migastone.com">Dalvit Oscar</option>
+          <option value="De Vita Fabio|f.devita@migastone.com">De Vita Fabio</option>
+        </select>
+      </div>
+      <div class="nav-buttons">
+        <div></div>
+        <button class="btn-nav btn-next" onclick="goNext()">Avanti →</button>
+      </div>
+    </div>
+
+    <!-- SEZIONE 1 -->
+    <div class="section" id="sec1">
+      <div class="section-header">
+        <h2>🏢 Blocco 0 — Dati Aziendali e Commerciali</h2>
+        <p>Raccoglili prima di entrare nelle 4 aree. Dimmi un ordine di grandezza, non serve la precisione assoluta.</p>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cliente_nome">Nome e Cognome referente *</label><input type="text"
+            id="cliente_nome" placeholder="Mario Rossi"></div>
+        <div class="field"><label for="cliente_azienda">Ragione Sociale *</label><input type="text" id="cliente_azienda"
+            placeholder="Rossi Srl"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cliente_email">Email prospect *</label><input type="email" id="cliente_email"
+            placeholder="mario@azienda.it"></div>
+        <div class="field"><label for="cliente_cellulare">Cellulare</label><input type="tel" id="cliente_cellulare"
+            name="cliente_cellulare" placeholder="es: +39 333 1234567"></div>
+        <div class="field"><label for="cliente_sito_web">Sito web</label><input type="url" id="cliente_sito_web"
+            name="cliente_sito_web" placeholder="es: https://www.azienda.it"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="cliente_partita_iva">Partita IVA *</label><input type="text"
+            id="cliente_partita_iva" name="cliente_partita_iva" placeholder="es: 01234567890" maxlength="16"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cliente_settore">Settore</label>
+          <select id="cliente_settore" name="cliente_settore">
+            <option value="">— Seleziona settore —</option>
+            <option value="consulenza">Consulenza aziendale e strategica</option>
+            <option value="formazione">Formazione e sviluppo professionale</option>
+            <option value="risorse_umane">Risorse umane e selezione del personale</option>
+            <option value="marketing">Marketing e comunicazione</option>
+            <option value="tecnologia">Tecnologia e innovazione</option>
+            <option value="finanza">Finanza e assicurazioni</option>
+            <option value="logistica">Logistica e Trasporti</option>
+            <option value="energia">Energia e ambiente</option>
+            <option value="sicurezza">Sicurezza sul lavoro e compliance</option>
+            <option value="servizi_aziende">Servizi per aziende e supporto amministrativo</option>
+            <option value="turismo">Settore turistico</option>
+            <option value="eventi_privati">Settore matrimoni ed eventi privati</option>
+            <option value="agroalimentare">Settore agroalimentare e ristorazione</option>
+            <option value="sanitario">Settore sanitario e benessere</option>
+            <option value="educativo">Settore educativo e culturale</option>
+            <option value="creativo">Industria creativa e design</option>
+            <option value="manifatturiero">Settore manifatturiero e industriale</option>
+            <option value="immobiliare">Settore immobiliare, costruzioni e design</option>
+            <option value="automotive">Settore Automobilistico</option>
+            <option value="retail">Business Locali / Dettaglio</option>
+            <option value="pubblica_admin">Pubblica Amministrazione</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cliente_fatturato">Fatturato</label>
+          <div class="input-euro-wrap">
+            <span class="euro-prefix">€</span>
+            <input type="text" id="cliente_fatturato" name="cliente_fatturato" placeholder="es: 1.200.000">
+          </div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cliente_dipendenti">N° dipendenti</label>
+          <select id="cliente_dipendenti">
+            <option value="">— Seleziona —</option>
+            <option>1–5</option>
+            <option>6–15</option>
+            <option>16–50</option>
+            <option>51–200</option>
+            <option>Oltre 200</option>
+          </select>
+        </div>
+        <div class="field"><label for="venditori_interni">N° venditori/commerciali interni</label><input type="number"
+            id="venditori_interni" min="0" placeholder="3"></div>
+      </div>
+      <div class="field"><label for="prodotto_principale">Prodotto/servizio principale — cosa risolve per il
+          cliente?</label><textarea id="prodotto_principale"
+          placeholder="Descrivi il prodotto/servizio e il problema che risolve..."></textarea></div>
+      <div class="field-row">
+        <div class="field"><label for="clienti_attivi">N° clienti attivi</label><input type="number" id="clienti_attivi"
+            min="0" placeholder="120"></div>
+        <div class="field"><label for="database_storico">Database storico totale</label><input type="number"
+            id="database_storico" min="0" placeholder="450"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="ltv_annualizzato">LTV annualizzato (€ per cliente/anno)</label><input
+            type="number" id="ltv_annualizzato" min="0" placeholder="2500"></div>
+        <div class="field"><label for="conversione_freddo">% conversione lead FREDDO (es: 10)</label><input
+            type="number" id="conversione_freddo" min="0" max="100" placeholder="10"></div>
+      </div>
+      <div class="field">
+        <label for="conversione_referral">% conversione lead REFERENZIATO (es: 35)</label>
+        <input type="number" id="conversione_referral" min="0" max="100" placeholder="35">
+      </div>
+
+      <!-- BOX CALCOLI -->
+      <div class="box-calcoli">
+        <h3>📊 NUMERI CHE PARLANO</h3>
+        <div class="calc-item">
+          <div class="calc-label">💤 Capitale Relazionale Dormiente</div>
+          <div class="calc-value" id="calc-referral">— Inserisci i dati per attivare il calcolo</div>
+          <div class="coach-script" id="script-referral" style="display:none"></div>
+        </div>
+        <div class="calc-item">
+          <div class="calc-label">📈 Delta Conversione Mensile (su 10 lead stimati)</div>
+          <div class="calc-value" id="calc-delta">— Inserisci i dati per attivare il calcolo</div>
+          <div class="coach-script" id="script-delta" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn-nav btn-back" onclick="goBack()">← Indietro</button>
+        <button class="btn-nav btn-next" onclick="goNext()">Avanti →</button>
+      </div>
+    </div>
+
+    <!-- SEZIONE 2 — AREA 1 -->
+    <div class="section" id="sec2">
+      <div class="section-header">
+        <h2>🤝 AREA 1 — Ingegneria Relazionale</h2>
+        <p>Network, referenze, sistema di segnalazioni strutturate</p>
+      </div>
+      <div class="box-stoica">
+        <strong>SOTTO IL CONTROLLO DEL PROSPECT:</strong> i clienti soddisfatti esistono, i contatti dei partner
+        esistono, la rete è già lì — solo dormiente. Attivare o non attivare il capitale relazionale è una
+        scelta.<br><br>
+        <strong>COSTO DELL'INAZIONE:</strong> ogni mese senza un sistema di referral strutturato è un mese in cui la
+        concorrenza più organizzata si prende i clienti che i tuoi stessi clienti avrebbero potuto portare.
+      </div>
+      <div class="box-domande">
+        <h4>💬 Domande Guida Coach</h4>
+        <div class="domanda-coach">
+          <label for="a1_q1_risposta"><strong>1. Quante segnalazioni avete ricevuto nell'ultimo anno dai
+              clienti?</strong><span class="nota-coach">Se dice 'poche' o 'nessuna' → gap alto probabile</span></label>
+          <textarea id="a1_q1_risposta" name="a1_q1_risposta" rows="3" maxlength="500"
+            placeholder="Risposta del prospect..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a1_q2_risposta"><strong>2. Avete un sistema per raccogliere e gestire le segnalazioni, o va a
+              istinto?</strong><span class="nota-coach">Cattura: CRM, Excel, memoria, niente. Parola chiave:
+              sistematico</span></label>
+          <textarea id="a1_q2_risposta" name="a1_q2_risposta" rows="3" maxlength="500"
+            placeholder="CRM, Excel, niente, istinto..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a1_q3_risposta"><strong>3. Quando ricevete una referral, come la gestite? C'è un
+              processo?</strong><span class="nota-coach">Se non esiste processo: ferita confermata. Notare le parole
+              usate</span></label>
+          <textarea id="a1_q3_risposta" name="a1_q3_risposta" rows="3" maxlength="500"
+            placeholder="Processo descritto..."></textarea>
+        </div>
+        <div class="domanda-coach" style="display:none">
+          <label for="a1_q4_risposta"><strong>4. Conversione referral vs lead freddo — differenza stimata?</strong><span
+              class="nota-coach">Risposta qualitativa: il doppio, molto di più. Collegare ai campi % del Blocco
+              0</span></label>
+          <textarea id="a1_q4_risposta" name="a1_q4_risposta" rows="3" maxlength="500"
+            placeholder="Stima qualitativa..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a1_q5_risposta"><strong>5. Avete mai compensato formalmente chi ha portato un
+              cliente?</strong><span class="nota-coach">Sì/No + come. Se No: opportunità programma referral non
+              sfruttata</span></label>
+          <textarea id="a1_q5_risposta" name="a1_q5_risposta" rows="3" maxlength="500"
+            placeholder="Sì/No + come..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a1_q6_risposta"><strong>6. Se il 30% dei nuovi clienti arrivasse da referral tracciate, cosa
+              cambierebbe?</strong><span class="nota-coach">Domanda di visione. Cattura l'aspirazione — usarla nella
+              proposta</span></label>
+          <textarea id="a1_q6_risposta" name="a1_q6_risposta" rows="3" maxlength="500"
+            placeholder="Visione del prospect..."></textarea>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <label>Realtà: <span id="lbl-r1">5</span>/10</label>
+        <input type="range" id="realta_area1" min="1" max="10" step="1" value="5" oninput="updateSlider('area1')">
+        <div class="slider-hint">Quanto bene gestiscono oggi le referenze?</div>
+      </div>
+      <div class="slider-wrap">
+        <label>Desiderio: <span id="lbl-d1">5</span>/10</label>
+        <input type="range" id="desiderio_area1" min="1" max="10" step="1" value="5" oninput="updateSlider('area1')">
+        <div class="slider-hint">Quanto vogliono migliorare questa area?</div>
+      </div>
+      <div class="gap-display">Gap: <span id="gap-area1-val">0</span> punti <span id="gap-area1-badge"></span></div>
+      <div class="box-gap-script" id="gap-area1-script"></div>
+      <div class="nav-buttons">
+        <button class="btn-nav btn-back" onclick="goBack()">← Indietro</button>
+        <button class="btn-nav btn-next" onclick="goNext()">Avanti →</button>
+      </div>
+    </div>
+
+    <!-- SEZIONE 3 — AREA 2 -->
+    <div class="section" id="sec3">
+      <div class="section-header">
+        <h2>⚙️ AREA 2 — Automazione e Processi</h2>
+        <p>Efficienza operativa, riduzione attività manuali, tecnologia applicata</p>
+      </div>
+      <div class="box-stoica">
+        <strong>SOTTO IL CONTROLLO DEL PROSPECT:</strong> la tecnologia esiste, il costo di implementazione è una
+        frazione del costo del personale dedicato ad attività manuali.<br><br>
+        <strong>COSTO DELL'INAZIONE:</strong> un team che passa 2h/giorno in attività manuali automatizzabili perde 500
+        ore/anno per persona. A €25/ora = €12.500 per dipendente.
+      </div>
+      <div class="box-domande">
+        <h4>💬 Domande Guida Coach</h4>
+        <div class="domanda-coach">
+          <label for="a2_q1_risposta"><strong>1. Attività manuali ripetitive che il team fa ogni giorno?</strong><span
+              class="nota-coach">Lista attività: fatturazione, follow-up, report, inserimento dati...</span></label>
+          <textarea id="a2_q1_risposta" name="a2_q1_risposta" rows="3" maxlength="500"
+            placeholder="Lista attività..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="domanda-coach">
+            <label for="a2_q2_ore"><strong>2a. Ore perse a settimana per persona in attività manuali</strong><span
+                class="nota-coach">Input numerico. Verrà usato nel calcolo automatico del costo</span></label>
+            <input type="number" id="a2_q2_ore" name="a2_q2_ore" min="0" max="40" step="0.5" placeholder="es: 5">
+          </div>
+          <div class="domanda-coach">
+            <label for="a2_q2_costo"><strong>2b. Costo orario stimato del personale (€/ora)</strong><span
+                class="nota-coach">Default suggerito: 25. Il calcolo si aggiorna in tempo reale</span></label>
+            <input type="number" id="a2_q2_costo" name="a2_q2_costo" min="10" max="200" step="1" value="25"
+              placeholder="es: 25">
+          </div>
+        </div>
+        <div id="box_costo_inefficienza" class="calcolo-live">
+          <strong>Costo inefficienza annua stimata:</strong>
+          <span id="val_costo_inefficienza">— inserisci ore e costo per calcolare</span>
+          <div class="coach-sub" id="script_costo_inefficienza" style="display:none"></div>
+        </div>
+        <div class="domanda-coach">
+          <label for="a2_q3_risposta"><strong>3. Le campagne marketing sono automatizzate o manuali?</strong><span
+              class="nota-coach">Automatizzato / Manuale / Misto — strumenti usati</span></label>
+          <textarea id="a2_q3_risposta" name="a2_q3_risposta" rows="3" maxlength="500"
+            placeholder="Strumenti, modalità..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a2_q4_risposta"><strong>4. Strumenti di automazione già in uso? Cosa funziona, cosa
+              no?</strong><span class="nota-coach">CRM, Mailchimp, HubSpot, niente — cosa funziona, cosa
+              no</span></label>
+          <textarea id="a2_q4_risposta" name="a2_q4_risposta" rows="3" maxlength="500"
+            placeholder="CRM, Mailchimp, niente..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a2_q5_risposta"><strong>5. 3 cose da automatizzare domani mattina se poteste</strong><span
+              class="nota-coach">Lista priorità — usarle come argomento nella proposta</span></label>
+          <textarea id="a2_q5_risposta" name="a2_q5_risposta" rows="3" maxlength="500"
+            placeholder="Priorità del prospect..."></textarea>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <label>Realtà: <span id="lbl-r2">5</span>/10</label>
+        <input type="range" id="realta_area2" min="1" max="10" step="1" value="5" oninput="updateSlider('area2')">
+        <div class="slider-hint">Quanto sono automatizzati oggi i processi?</div>
+      </div>
+      <div class="slider-wrap">
+        <label>Desiderio: <span id="lbl-d2">5</span>/10</label>
+        <input type="range" id="desiderio_area2" min="1" max="10" step="1" value="5" oninput="updateSlider('area2')">
+        <div class="slider-hint">Quanto vogliono migliorare l'automazione?</div>
+      </div>
+      <div class="gap-display">Gap: <span id="gap-area2-val">0</span> punti <span id="gap-area2-badge"></span></div>
+      <div class="box-gap-script" id="gap-area2-script"></div>
+      <div class="nav-buttons">
+        <button class="btn-nav btn-back" onclick="goBack()">← Indietro</button>
+        <button class="btn-nav btn-next" onclick="goNext()">Avanti →</button>
+      </div>
+    </div>
+
+    <!-- SEZIONE 4 — AREA 3 -->
+    <div class="section" id="sec4">
+      <div class="section-header">
+        <h2>🎯 AREA 3 — Posizionamento e Marketing</h2>
+        <p>Differenziazione, chiarezza del messaggio, autorevolezza nel mercato</p>
+      </div>
+      <div class="box-stoica">
+        <strong>SOTTO IL CONTROLLO DEL PROSPECT:</strong> il posizionamento non è imposto dal mercato. È una scelta
+        strategica.<br><br>
+        <strong>COSTO DELL'INAZIONE:</strong> un posizionamento confuso o generico trasforma il prezzo nel principale
+        criterio di scelta. Quando non sei differenziato, vinci solo abbassando i margini.
+      </div>
+      <div class="box-domande">
+        <h4>💬 Domande Guida Coach</h4>
+        <div class="domanda-coach">
+          <label for="a3_q1_risposta"><strong>1. Perché scegliervi? Risposta spontanea del prospect</strong><span
+              class="nota-coach">Se risponde: qualità, serietà, esperienza → posizionamento generico</span></label>
+          <textarea id="a3_q1_risposta" name="a3_q1_risposta" rows="3" maxlength="500"
+            placeholder="Risposta testuale..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a3_q2_risposta"><strong>2. Cosa fate di diverso dai competitor?</strong><span
+              class="nota-coach">Cerca differenziazione reale. Se non sa → ferita confermata</span></label>
+          <textarea id="a3_q2_risposta" name="a3_q2_risposta" rows="3" maxlength="500"
+            placeholder="Differenziazione reale..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a3_q3_risposta"><strong>3. Sul sito si capisce subito di cosa vi occupate e per chi?</strong><span
+              class="nota-coach">Sì / No / Parzialmente — notare se usa tono difensivo</span></label>
+          <textarea id="a3_q3_risposta" name="a3_q3_risposta" rows="2" maxlength="500"
+            placeholder="Sì / No / Parzialmente + commento"></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a3_q4_risposta"><strong>4. Campagne con CTA diretta e misurabile — risultati?</strong><span
+              class="nota-coach">Ha fatto campagne? CTR, conversioni, ROAS? O solo brand awareness?</span></label>
+          <textarea id="a3_q4_risposta" name="a3_q4_risposta" rows="3" maxlength="500"
+            placeholder="Tipo campagna, CTR, conversioni..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a3_q5_risposta"><strong>5. Lead qualificati o tanta curiosità e poco acquisto?</strong><span
+              class="nota-coach">Qualità lead in ingresso. Collegare al gap posizionamento</span></label>
+          <textarea id="a3_q5_risposta" name="a3_q5_risposta" rows="3" maxlength="500"
+            placeholder="Qualità lead in ingresso..."></textarea>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <label>Realtà: <span id="lbl-r3">5</span>/10</label>
+        <input type="range" id="realta_area3" min="1" max="10" step="1" value="5" oninput="updateSlider('area3')">
+        <div class="slider-hint">Com'è il posizionamento attuale?</div>
+      </div>
+      <div class="slider-wrap">
+        <label>Desiderio: <span id="lbl-d3">5</span>/10</label>
+        <input type="range" id="desiderio_area3" min="1" max="10" step="1" value="5" oninput="updateSlider('area3')">
+        <div class="slider-hint">Quanto vogliono migliorare il marketing?</div>
+      </div>
+      <div class="gap-display">Gap: <span id="gap-area3-val">0</span> punti <span id="gap-area3-badge"></span></div>
+      <div class="box-gap-script" id="gap-area3-script"></div>
+      <div class="nav-buttons">
+        <button class="btn-nav btn-back" onclick="goBack()">← Indietro</button>
+        <button class="btn-nav btn-next" onclick="goNext()">Avanti →</button>
+      </div>
+    </div>
+
+    <!-- SEZIONE 5 — AREA 4 -->
+    <div class="section" id="sec5">
+      <div class="section-header">
+        <h2>📊 AREA 4 — CRM e Gestione Pipeline</h2>
+        <p>Struttura commerciale, tracciabilità, processo di vendita replicabile</p>
+      </div>
+      <div class="box-stoica">
+        <strong>SOTTO IL CONTROLLO DEL PROSPECT:</strong> strutturare o meno il processo commerciale è una scelta. La
+        fragilità operativa non dipende dal mercato.<br><br>
+        <strong>COSTO DELL'INAZIONE:</strong> trattative che si perdono per mancato follow-up. Fai stimare la
+        percentuale, poi calcola il valore in euro perso ogni anno.
+      </div>
+      <div class="box-domande">
+        <h4>💬 Domande Guida Coach</h4>
+        <div class="domanda-coach">
+          <label for="a4_q1_risposta"><strong>1. Come gestite la pipeline oggi? CRM, Excel, memoria?</strong><span
+              class="nota-coach">Strumento usato. Se memoria o WhatsApp → ferita grave</span></label>
+          <textarea id="a4_q1_risposta" name="a4_q1_risposta" rows="2" maxlength="500"
+            placeholder="Strumento attuale..."></textarea>
+        </div>
+        <div class="field-row">
+          <div class="domanda-coach">
+            <label for="a4_q2_perc"><strong>2a. % trattative perse per mancato follow-up (stima)</strong><span
+                class="nota-coach">Input percentuale. Verrà usato nel calcolo perdita pipeline</span></label>
+            <input type="number" id="a4_q2_perc" name="a4_q2_perc" min="0" max="100" step="1" placeholder="es: 20">
+          </div>
+          <div class="domanda-coach">
+            <label for="a4_q2_trattative"><strong>2b. N° trattative aperte tipiche in un mese</strong><span
+                class="nota-coach">Per calcolo perdita. Se non sa: chiedere ordine di grandezza</span></label>
+            <input type="number" id="a4_q2_trattative" name="a4_q2_trattative" min="0" step="1" placeholder="es: 15">
+          </div>
+        </div>
+        <div id="box_perdita_pipeline" class="calcolo-live">
+          <strong>Stima perdita pipeline annua:</strong>
+          <span id="val_perdita_pipeline">— inserisci % e trattative per calcolare</span>
+          <div class="coach-sub" id="script_perdita_pipeline" style="display:none"></div>
+        </div>
+        <div class="domanda-coach">
+          <label for="a4_q3_risposta"><strong>3. Processo di vendita documentato e replicabile?</strong><span
+              class="nota-coach">Sì / No / Parzialmente. Se No → dipendenza personale = fragilità</span></label>
+          <textarea id="a4_q3_risposta" name="a4_q3_risposta" rows="2" maxlength="500"
+            placeholder="Sì / No + dettaglio"></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a4_q4_risposta"><strong>4. Tempo medio primo contatto → chiusura. Cosa rallenta?</strong><span
+              class="nota-coach">Giorni/settimane. Collo di bottiglia: approvazione, preventivo,
+              legale...</span></label>
+          <textarea id="a4_q4_risposta" name="a4_q4_risposta" rows="3" maxlength="500"
+            placeholder="Giorni, collo di bottiglia..."></textarea>
+        </div>
+        <div class="domanda-coach">
+          <label for="a4_q5_risposta"><strong>5. Se un venditore se ne va domani, il nuovo parte da zero?</strong><span
+              class="nota-coach">Misura il capitale commerciale intrappolato nelle persone</span></label>
+          <textarea id="a4_q5_risposta" name="a4_q5_risposta" rows="3" maxlength="500"
+            placeholder="Risposta del prospect..."></textarea>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <label>Realtà: <span id="lbl-r4">5</span>/10</label>
+        <input type="range" id="realta_area4" min="1" max="10" step="1" value="5" oninput="updateSlider('area4')">
+        <div class="slider-hint">Com'è strutturata oggi la pipeline?</div>
+      </div>
+      <div class="slider-wrap">
+        <label>Desiderio: <span id="lbl-d4">5</span>/10</label>
+        <input type="range" id="desiderio_area4" min="1" max="10" step="1" value="5" oninput="updateSlider('area4')">
+        <div class="slider-hint">Quanto vogliono migliorare il CRM?</div>
+      </div>
+      <div class="gap-display">Gap: <span id="gap-area4-val">0</span> punti <span id="gap-area4-badge"></span></div>
+      <div class="box-pipeline-calc" id="pipeline-calc-box" style="display:none">
+        <div style="font-weight:700;color:#E67E22;margin-bottom:4px;">💸 Stima perdita annua da trattative non gestite
+        </div>
+        <div class="pipeline-value" id="pipeline-calc-value"></div>
+        <div style="font-size:12px;margin-top:6px;" id="pipeline-script"></div>
+      </div>
+      <div class="box-gap-script" id="gap-area4-script"></div>
+      <div class="nav-buttons">
+        <button class="btn-nav btn-back" onclick="goBack()">← Indietro</button>
+        <button class="btn-nav btn-next" onclick="goNext()">Avanti →</button>
+      </div>
+    </div>
+
+    <!-- SEZIONE 6 — RIEPILOGO -->
+    <div class="section" id="sec6">
+      <div class="section-header">
+        <h2>📋 Riepilogo Diagnostico</h2>
+        <p>Controlla i dati prima di generare il referto</p>
+      </div>
+
+      <table class="recap-table" id="recap-anagrafica"></table>
+
+      <h3 style="color:var(--blu);margin:18px 0 10px;">📊 Scoring 4 Aree</h3>
+      <table class="recap-table">
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Realtà</th>
+            <th>Desiderio</th>
+            <th>Gap</th>
+            <th>Stato</th>
+          </tr>
+        </thead>
+        <tbody id="recap-scoring"></tbody>
+      </table>
+
+      <div class="box-diagnosi" id="box-diagnosi"></div>
+
+      <!-- SEGNALI DI ACQUISTO -->
+      <div class="box-segnali">
+        <h4>⚡ Segnali emersi durante la call — spunta quelli rilevati</h4>
+        <label class="check-item"><input type="checkbox"> Fa domande su come funziona il servizio nel dettaglio</label>
+        <label class="check-item"><input type="checkbox"> Dice "Ho già provato X, non ha funzionato"</label>
+        <label class="check-item"><input type="checkbox"> Quantifica spontaneamente il problema in euro</label>
+        <label class="check-item"><input type="checkbox"> Chiede tempistiche di implementazione</label>
+        <label class="check-item"><input type="checkbox"> Menziona una scadenza o un momento critico</label>
+      </div>
+
+      <!-- NOTE CONSULENTE -->
+      <div class="field">
+        <label for="note_consulente">📝 Note finali dalla call</label>
+        <textarea id="note_consulente" style="min-height:120px;"
+          placeholder="Frasi chiave del prospect, segnali emersi, calcolo costo inazione espresso a voce, next step concordato, data call proposta..."></textarea>
+      </div>
+
+      <!-- SCRIPT CHIUSURA -->
+      <div class="box-chiusura">
+        <strong>📢 SCRIPT DI CHIUSURA:</strong><br>
+        "Perfetto [Nome], ho le informazioni che mi servono. Costruirò qualcosa di preciso per te — non una proposta
+        generica. Ogni cosa che leggerai sarà pensata sul tuo business specifico. Ti mando il referto e la proposta
+        entro [X giorni]. Prevediamo una call di 30 minuti per presentartela insieme. Quando sei disponibile questa
+        settimana o la prossima?"<br>
+        <strong>→ Fissa subito la data. Non lasciare che sia lui a ricontattarti.</strong>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn-nav btn-back" onclick="goBack()">← Indietro</button>
+      </div>
+
+      <button class="btn-submit" id="btn-submit" onclick="submitForm()">🚀 GENERA REFERTO DIAGNOSTICO</button>
+      <div class="spinner" id="spinner">Elaborazione... attendere 30–60 secondi</div>
+      <div class="box-success" id="box-success">✅ Referto inviato. Il cliente riceverà il link via email.</div>
+      <div class="box-error" id="box-error">❌ Errore nell'invio. Riprova o contatta il supporto.</div>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <script>
+    const LS_KEY = 'checkup_sv_session';
+    const WEBHOOK = 'https://flow.migastone.com/webhook/791ba134-a96c-487b-bb38-296beb418f16';
+    const FIELD_IDS = [
+      'consulente', 'cliente_nome', 'cliente_email', 'cliente_cellulare', 'cliente_azienda', 'cliente_sito_web', 'cliente_partita_iva', 'cliente_settore',
+      'cliente_fatturato', 'cliente_dipendenti', 'clienti_attivi', 'database_storico', 'venditori_interni',
+      'ltv_annualizzato', 'conversione_freddo', 'conversione_referral', 'prodotto_principale',
+      'realta_area1', 'desiderio_area1', 'realta_area2', 'desiderio_area2',
+      'realta_area3', 'desiderio_area3', 'realta_area4', 'desiderio_area4', 'note_consulente',
+      // Area 1
+      'a1_q1_risposta', 'a1_q2_risposta', 'a1_q3_risposta', 'a1_q4_risposta', 'a1_q5_risposta', 'a1_q6_risposta',
+      // Area 2
+      'a2_q1_risposta', 'a2_q2_ore', 'a2_q2_costo', 'a2_q3_risposta', 'a2_q4_risposta', 'a2_q5_risposta',
+      // Area 3
+      'a3_q1_risposta', 'a3_q2_risposta', 'a3_q3_risposta', 'a3_q4_risposta', 'a3_q5_risposta',
+      // Area 4
+      'a4_q1_risposta', 'a4_q2_perc', 'a4_q2_trattative', 'a4_q3_risposta', 'a4_q4_risposta', 'a4_q5_risposta'
+    ];
+    const SECTION_NAMES = ['Selezione Consulente', 'Dati Aziendali', 'Area 1: Relazionale', 'Area 2: Automazione', 'Area 3: Posizionamento', 'Area 4: CRM Pipeline', 'Riepilogo e Invio'];
+    let currentSection = 0;
+    let debounceTimer = null;
+
+    function fmt(n) { return n.toLocaleString('it-IT'); }
+
+    function getVal(id) {
+      const el = document.getElementById(id);
+      if (!el) return '';
+      if (el.type === 'range' || el.type === 'number') return parseFloat(el.value) || 0;
+      return el.value || '';
+    }
+
+    function getValue(id) {
+      const el = document.getElementById(id);
+      return el ? (el.value || '') : '';
+    }
+
+    function calcolaCostoInefficienzaAnnua() {
+      const ore = parseFloat(document.getElementById('a2_q2_ore')?.value) || 0;
+      const costo = parseFloat(document.getElementById('a2_q2_costo')?.value) || 0;
+      const dip = parseFloat(document.getElementById('venditori_interni')?.value) || 0;
+      return ore * 52 * costo * dip;
+    }
+
+    function calcolaPerdita_PipelineAnnua() {
+      const perc = parseFloat(document.getElementById('a4_q2_perc')?.value) || 0;
+      const tratt = parseFloat(document.getElementById('a4_q2_trattative')?.value) || 0;
+      const ltv = parseFloat(document.getElementById('ltv_annualizzato')?.value) || 0;
+      return (perc / 100) * tratt * ltv * 12;
+    }
+
+    function aggiornaCostoInefficienzaLive() {
+      const ore = parseFloat(document.getElementById('a2_q2_ore')?.value) || 0;
+      const costo = parseFloat(document.getElementById('a2_q2_costo')?.value) || 25;
+      const dip = parseFloat(document.getElementById('venditori_interni')?.value) || 1;
+      const el = document.getElementById('val_costo_inefficienza');
+      const sc = document.getElementById('script_costo_inefficienza');
+      if (!el) return;
+      if (ore > 0 && costo > 0) {
+        const totale = ore * 52 * costo * dip;
+        el.textContent = '\u20ac ' + totale.toLocaleString('it-IT') + ' / anno (su ' + dip + ' persone)';
+        if (sc) {
+          sc.textContent = 'Hai ' + dip + ' ' + (dip === 1 ? 'persona' : 'persone') + ' che ' + (dip === 1 ? 'perde' : 'perdono') + ' ' + ore + 'h/settimana in attivit\u00e0 manuali. Sono ' + fmt(Math.round(ore * 52 * dip)) + 'h/anno \u00d7 \u20ac' + costo + ' = \u20ac' + fmt(Math.round(totale)) + ' che finiscono nel vuoto invece che nella crescita.';
+          sc.style.display = 'block';
+        }
+      } else {
+        el.textContent = '\u2014 inserisci ore e costo per calcolare';
+        if (sc) sc.style.display = 'none';
+      }
+      debounceSave();
+    }
+
+    function aggiornaPerdita_PipelineLive() {
+      const perc = parseFloat(document.getElementById('a4_q2_perc')?.value) || 0;
+      const tratt = parseFloat(document.getElementById('a4_q2_trattative')?.value) || 0;
+      const ltv = parseFloat(document.getElementById('ltv_annualizzato')?.value) || 0;
+      const el = document.getElementById('val_perdita_pipeline');
+      const sc = document.getElementById('script_perdita_pipeline');
+      if (!el) return;
+      if (perc > 0 && tratt > 0 && ltv > 0) {
+        const totale = (perc / 100) * tratt * ltv * 12;
+        el.textContent = '\u20ac ' + totale.toLocaleString('it-IT') + ' / anno';
+        if (sc) {
+          sc.textContent = 'Con il ' + perc + '% di trattative perse su ' + tratt + ' al mese \u00d7 \u20ac' + fmt(ltv) + ' LTV stiamo parlando di \u20ac' + fmt(Math.round(totale)) + ' all\u2019anno che escono dalla porta non perch\u00e9 il cliente non volesse comprare \u2014 ma perch\u00e9 nessuno l\u2019ha richiamato al momento giusto.';
+          sc.style.display = 'block';
+        }
+      } else {
+        el.textContent = '\u2014 inserisci % trattative, numero trattative e LTV per calcolare';
+        if (sc) sc.style.display = 'none';
+      }
+      debounceSave();
+    }
+
+    function saveSession() {
+      const data = { sezione_corrente: currentSection };
+      FIELD_IDS.forEach(id => { data[id] = getVal(id); });
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    function loadSession() {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return false;
+      try {
+        const data = JSON.parse(raw);
+        FIELD_IDS.forEach(id => {
+          const el = document.getElementById(id);
+          if (!el || data[id] === undefined) return;
+          el.value = data[id];
+        });
+        currentSection = parseInt(data.sezione_corrente) || 0;
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function debounceSave() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(saveSession, 300);
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function resetSession() {
+      if (confirm('Sei sicuro? Tutti i dati inseriti verranno cancellati definitivamente.')) {
+        localStorage.removeItem(LS_KEY);
+        location.reload();
+      }
+    }
+
+    function showSection(n) {
+      document.querySelectorAll('.section').forEach((s, i) => s.classList.toggle('active', i === n));
+      currentSection = n;
+      updateProgress();
+      if (n === 6) buildRiepilogo();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      saveSession();
+    }
+
+    function updateProgress() {
+      const total = 7;
+      const pct = Math.round(((currentSection + 1) / total) * 100);
+      document.getElementById('progress-bar-inner').style.width = pct + '%';
+      document.getElementById('progress-label').textContent = `Sezione ${currentSection + 1} di ${total} — ${SECTION_NAMES[currentSection]}`;
+    }
+
+    // Validation per sezione
+    function validateSection(n) {
+      let valid = true;
+      const required = {
+        0: ['consulente'],
+        1: ['cliente_nome', 'cliente_azienda', 'cliente_email', 'cliente_partita_iva'],
+        2: [], 3: [], 4: [], 5: [], 6: []
+      };
+      (required[n] || []).forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (!el.value.trim()) {
+          el.classList.add('error');
+          valid = false;
+        } else {
+          el.classList.remove('error');
+        }
+      });
+      if (!valid) showToast('⚠️ Compila i campi obbligatori evidenziati in rosso');
+      return valid;
+    }
+
+    function goNext() {
+      if (!validateSection(currentSection)) return;
+      if (currentSection < 6) showSection(currentSection + 1);
+    }
+    function goBack() {
+      if (currentSection > 0) showSection(currentSection - 1);
+    }
+
+    // SLIDERS
+    function updateSlider(area) {
+      const r = parseInt(document.getElementById('realta_' + area).value) || 0;
+      const d = parseInt(document.getElementById('desiderio_' + area).value) || 0;
+      const num = area.replace('area', '');
+      document.getElementById('lbl-r' + num).textContent = r;
+      document.getElementById('lbl-d' + num).textContent = d;
+      const gap = d - r;
+      document.getElementById('gap-' + area + '-val').textContent = gap;
+      // badge
+      const badge = document.getElementById('gap-' + area + '-badge');
+      if (gap >= 5) { badge.className = 'badge badge-red'; badge.textContent = '⚠ AREA AD ALTO DOLORE'; }
+      else if (gap >= 3) { badge.className = 'badge badge-orange'; badge.textContent = 'Attenzione'; }
+      else { badge.className = 'badge badge-gray'; badge.textContent = 'Area secondaria'; }
+      // script
+      updateGapScript(area, gap, num);
+      // pipeline calc (solo area4)
+      if (area === 'area4') updatePipelineCalc(gap);
+      debounceSave();
+    }
+
+    function updateGapScript(area, gap, num) {
+      const el = document.getElementById('gap-' + area + '-script');
+      const dip = parseInt(getVal('cliente_dipendenti_num')) || 0;
+      const scripts = {
+        area1: {
+          high: `📢 COSA DIRE:<br>'Hai un gap di ${gap} punti su questa area. Significa che sai dove vuoi arrivare ma sai anche che oggi sei lontano. Questo è esattamente il punto in cui perdi clienti che non sai nemmeno di stare perdendo. Ogni mese che passa senza un sistema strutturato è un mese in cui quella distanza resta invariata — o peggiora.'`,
+          mid: `📢 COSA DIRE:<br>'C'è margine di miglioramento su questa area. Tienila in mente — potremmo affrontarla in una fase successiva.'`,
+          low: `📢 NOTE COACH: Gap basso — non insistere su questa area nella proposta.`
+        },
+        area2: {
+          high: `📢 COSA DIRE:<br>'Hai ${gap} punti di gap sull'automazione. Significa ore-uomo perse ogni settimana in attività che un sistema gestirebbe da solo.'`,
+          mid: `📢 COSA DIRE:<br>'C'è margine di miglioramento sull'automazione. Tienila in mente per una fase successiva.'`,
+          low: `📢 NOTE COACH: Gap basso — non è una priorità. Non spingere su questa area.`
+        },
+        area3: {
+          high: `📢 COSA DIRE:<br>'Un posizionamento debole ha un effetto preciso: costringe a competere sul prezzo. Non perché il tuo prodotto valga meno — ma perché il cliente non sa perché dovrebbe sceglierti invece di qualcun altro. Stai lasciando che sia il mercato a decidere il tuo valore invece di imporlo tu.'`,
+          mid: `📢 COSA DIRE:<br>'C'è margine di miglioramento sul posizionamento. Potremmo affrontarlo in una fase successiva.'`,
+          low: `📢 NOTE COACH: Posizionamento già solido — non è la ferita principale.`
+        },
+        area4: {
+          high: `📢 COSA DIRE:<br>'Il tuo processo commerciale oggi dipende dalla memoria e dalla bravura delle singole persone. Questo ha un nome: fragilità strutturale. Funziona finché funziona — ma basta una persona che se ne va, un periodo di malattia, un mese storto — e tutto rallenta.'`,
+          mid: `📢 COSA DIRE:<br>'C'è margine di miglioramento sulla gestione pipeline. Potremmo strutturarla meglio.'`,
+          low: `📢 NOTE COACH: Pipeline già strutturata — non è la ferita principale.`
+        }
+      };
+      const s = scripts[area];
+      el.innerHTML = gap >= 5 ? s.high : (gap >= 3 ? s.mid : s.low);
+    }
+
+    function updatePipelineCalc(gap) {
+      const ltv = parseFloat(getVal('ltv_annualizzato')) || 0;
+      const box = document.getElementById('pipeline-calc-box');
+      if (ltv > 0) {
+        const val = gap * 0.5 * ltv * 12;
+        document.getElementById('pipeline-calc-value').textContent = '€ ' + fmt(Math.round(val)) + ' / anno';
+        document.getElementById('pipeline-script').innerHTML = `📢 COSA DIRE:<br>'Proviamo a mettere un numero su questo. Se stimiamo che ogni mese perdi anche solo ${(gap * 0.5).toFixed(1)} trattative per follow-up non fatto, e ognuna vale €${fmt(ltv)}, stiamo parlando di €${fmt(Math.round(val))} all'anno che escono dalla porta non perché il cliente non volesse comprare — ma perché nessuno l'ha richiamato al momento giusto.'`;
+        box.style.display = 'block';
+      } else {
+        box.style.display = 'none';
+      }
+    }
+
+    // CALCOLI LIVE sez1
+    function updateCalcoli() {
+      const ca = parseFloat(getVal('clienti_attivi')) || 0;
+      const ltv = parseFloat(getVal('ltv_annualizzato')) || 0;
+      const cf = parseFloat(getVal('conversione_freddo')) || 0;
+      const cr = parseFloat(getVal('conversione_referral')) || 0;
+
+      const refEl = document.getElementById('calc-referral');
+      const deltaEl = document.getElementById('calc-delta');
+      const scrRef = document.getElementById('script-referral');
+      const scrDel = document.getElementById('script-delta');
+
+      if (ca > 0 && ltv > 0) {
+        const val = ca * 0.15 * ltv;
+        refEl.textContent = '€ ' + fmt(Math.round(val));
+        scrRef.innerHTML = `📢 COSA DIRE AL PROSPECT:<br>'[Nome], guardando i tuoi numeri: hai ${fmt(ca)} clienti soddisfatti, ognuno vale circa €${fmt(ltv)} l'anno. Il 15% di loro — statisticamente — è disposto a presentarti qualcuno se glielo chiedi nel modo giusto. Stiamo parlando di €${fmt(Math.round(val))} che ogni anno rimangono fermi perché non c'è un sistema che li attivi. Questo è il capitale che stai lasciando sul tavolo ogni anno.'`;
+        scrRef.style.display = 'block';
+      } else {
+        refEl.textContent = '— Inserisci i dati per attivare il calcolo';
+        scrRef.style.display = 'none';
+      }
+
+      if (cr > 0 && cf >= 0 && ltv > 0) {
+        const deltaM = ((cr - cf) / 100) * 10 * ltv;
+        const deltaA = deltaM * 12;
+        deltaEl.textContent = '€ ' + fmt(Math.round(deltaM)) + ' / mese — € ' + fmt(Math.round(deltaA)) + ' / anno';
+        scrDel.innerHTML = `📢 COSA DIRE AL PROSPECT:<br>'Quando ti arriva una referenza, chiudi il ${cr}% dei casi. Con un lead freddo siamo al ${cf}%. Ogni mese, se anche solo 10 di quei lead fossero referenziati invece che freddi, varrebbe €${fmt(Math.round(deltaM))} in più di fatturato — solo dal cambio della fonte. Questo non è marketing. È ingegneria.'`;
+        scrDel.style.display = 'block';
+      } else {
+        deltaEl.textContent = '— Inserisci i dati per attivare il calcolo';
+        scrDel.style.display = 'none';
+      }
+      debounceSave();
+    }
+
+    // RIEPILOGO
+    function buildRiepilogo() {
+      // Anagrafica
+      const rec = document.getElementById('recap-anagrafica');
+      rec.innerHTML = `
+    <tr><td><strong>Consulente</strong></td><td>${getConsulenteName()}</td></tr>
+    <tr><td><strong>Cliente</strong></td><td>${getVal('cliente_nome')} — ${getVal('cliente_azienda')}</td></tr>
+    <tr><td><strong>Email</strong></td><td>${getVal('cliente_email')}</td></tr>
+    <tr><td><strong>Cellulare</strong></td><td>${getVal('cliente_cellulare') || '—'}</td></tr>
+    <tr><td><strong>Settore</strong></td><td>${getVal('cliente_settore')}</td></tr>
+    <tr><td><strong>Fatturato</strong></td><td>${getVal('cliente_fatturato') ? '€ ' + getVal('cliente_fatturato') : '—'}</td></tr>
+    <tr><td><strong>Dipendenti</strong></td><td>${getVal('cliente_dipendenti')}</td></tr>
+  `;
+      // Scoring
+      const aree = [
+        { key: 'area1', label: 'Ingegneria Relazionale' },
+        { key: 'area2', label: 'Automazione e Processi' },
+        { key: 'area3', label: 'Posizionamento e Marketing' },
+        { key: 'area4', label: 'CRM e Pipeline' }
+      ];
+      const tbody = document.getElementById('recap-scoring');
+      tbody.innerHTML = '';
+      let gaps = [];
+      aree.forEach(a => {
+        const r = parseInt(getVal('realta_' + a.key)) || 0;
+        const d = parseInt(getVal('desiderio_' + a.key)) || 0;
+        const g = d - r;
+        gaps.push({ key: a.key, label: a.label, gap: g });
+        let badge = '';
+        if (g >= 5) badge = '<span class="badge badge-red">Alto dolore</span>';
+        else if (g >= 3) badge = '<span class="badge badge-orange">Attenzione</span>';
+        else badge = '<span class="badge badge-gray">Secondaria</span>';
+        tbody.innerHTML += `<tr><td>${a.label}</td><td>${r}/10</td><td>${d}/10</td><td><strong>${g}</strong></td><td>${badge}</td></tr>`;
+      });
+      // Diagnosi
+      const gapTot = gaps.reduce((s, x) => s + x.gap, 0) / 4;
+      const maxGap = gaps.reduce((best, x) => x.gap > best.gap ? x : best, gaps[0]);
+      const realitaMedia = (parseInt(getVal('realta_area1')) + parseInt(getVal('realta_area2')) + parseInt(getVal('realta_area3')) + parseInt(getVal('realta_area4'))) / 4;
+      let maturita, mLab;
+      if (realitaMedia <= 2) { maturita = 1; mLab = 'Caotico'; }
+      else if (realitaMedia <= 4) { maturita = 2; mLab = 'Gestito (instabile)'; }
+      else if (realitaMedia <= 6) { maturita = 3; mLab = 'Organizzato'; }
+      else if (realitaMedia <= 8) { maturita = 4; mLab = 'Ottimizzato'; }
+      else { maturita = 5; mLab = 'Eccellente'; }
+      const ca = parseFloat(getVal('clienti_attivi')) || 0;
+      const ltv = parseFloat(getVal('ltv_annualizzato')) || 0;
+      const cf = parseFloat(getVal('conversione_freddo')) || 0;
+      const cr = parseFloat(getVal('conversione_referral')) || 0;
+      const dormiente = ca * 0.15 * ltv;
+      const delta = ((cr - cf) / 100) * 10 * ltv;
+      let extraHTML = '';
+      if (ca > 0 && ltv > 0) extraHTML += `<div class="diagnosi-row">💤 Capitale dormiente: <span>€ ${fmt(Math.round(dormiente))}</span></div>`;
+      if (cr > 0 && ltv > 0) extraHTML += `<div class="diagnosi-row">📈 Delta conversione: <span>€ ${fmt(Math.round(delta))}/mese</span></div>`;
+      document.getElementById('box-diagnosi').innerHTML = `
+    <h3>🔍 DIAGNOSI FINALE</h3>
+    <div class="diagnosi-row">🩸 Ferita principale: <span>${maxGap.label.toUpperCase()}</span></div>
+    <div class="diagnosi-row">📊 Gap totale medio: <span>${gapTot.toFixed(2)} punti</span></div>
+    <div class="diagnosi-row">🏗 Livello maturità: <span>${maturita}/5 — ${mLab}</span></div>
+    ${extraHTML}
+  `;
+    }
+
+    function getConsulenteName() {
+      const v = getVal('consulente');
+      return v ? v.split('|')[0] : '—';
+    }
+
+    // SUBMIT
+    async function submitForm() {
+      // Mini-validazione finale
+      const must = ['consulente', 'cliente_nome', 'cliente_azienda', 'cliente_email'];
+      let ok = true;
+      must.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el || !el.value.trim()) { el && el.classList.add('error'); ok = false; }
+      });
+      if (!ok) { showToast('⚠️ Compila i campi obbligatori prima di inviare'); return; }
+
+      const btn = document.getElementById('btn-submit');
+      const spin = document.getElementById('spinner');
+      const boxOk = document.getElementById('box-success');
+      const boxErr = document.getElementById('box-error');
+      btn.disabled = true; spin.style.display = 'block'; boxOk.style.display = 'none'; boxErr.style.display = 'none';
+
+      // Build payload
+      const cParts = getVal('consulente').split('|');
+      const r1 = parseInt(getVal('realta_area1')), d1 = parseInt(getVal('desiderio_area1'));
+      const r2 = parseInt(getVal('realta_area2')), d2 = parseInt(getVal('desiderio_area2'));
+      const r3 = parseInt(getVal('realta_area3')), d3 = parseInt(getVal('desiderio_area3'));
+      const r4 = parseInt(getVal('realta_area4')), d4 = parseInt(getVal('desiderio_area4'));
+      const g1 = d1 - r1, g2 = d2 - r2, g3 = d3 - r3, g4 = d4 - r4;
+      const gapTot = parseFloat(((g1 + g2 + g3 + g4) / 4).toFixed(2));
+      const gapMap = { area1_relazionale: g1, area2_automazione: g2, area3_posizionamento: g3, area4_crm: g4 };
+      const labMap = { area1_relazionale: 'Ingegneria Relazionale', area2_automazione: 'Automazione e Processi', area3_posizionamento: 'Posizionamento e Marketing', area4_crm: 'CRM e Pipeline' };
+      let ferita = 'area1_relazionale', maxG = g1;
+      if (g2 > maxG) { ferita = 'area2_automazione'; maxG = g2; }
+      if (g3 > maxG) { ferita = 'area3_posizionamento'; maxG = g3; }
+      if (g4 > maxG) { ferita = 'area4_crm'; maxG = g4; }
+      const rMedia = (r1 + r2 + r3 + r4) / 4;
+      let mat, matLab;
+      if (rMedia <= 2) { mat = 1; matLab = 'Caotico'; }
+      else if (rMedia <= 4) { mat = 2; matLab = 'Gestito (instabile)'; }
+      else if (rMedia <= 6) { mat = 3; matLab = 'Organizzato'; }
+      else if (rMedia <= 8) { mat = 4; matLab = 'Ottimizzato'; }
+      else { mat = 5; matLab = 'Eccellente'; }
+      const ca = parseFloat(getVal('clienti_attivi')) || 0;
+      const ltv = parseFloat(getVal('ltv_annualizzato')) || 0;
+      const cf = parseFloat(getVal('conversione_freddo')) || 0;
+      const cr = parseFloat(getVal('conversione_referral')) || 0;
+
+      const payload = {
+        consulente_nome: cParts[0] || '',
+        consulente_email: cParts[1] || '',
+        cliente_nome: getVal('cliente_nome'),
+        cliente_email: getVal('cliente_email'),
+        cliente_cellulare: getVal('cliente_cellulare'),
+        cliente_azienda: getVal('cliente_azienda'),
+        cliente_sito_web: getValue('cliente_sito_web'),
+        cliente_partita_iva: getValue('cliente_partita_iva'),
+        cliente_settore: getVal('cliente_settore'),
+        cliente_fatturato: getVal('cliente_fatturato'),
+        cliente_dipendenti: getVal('cliente_dipendenti'),
+        prodotto_principale: getVal('prodotto_principale'),
+        clienti_attivi: ca,
+        database_storico: parseFloat(getVal('database_storico')) || 0,
+        venditori_interni: parseFloat(getVal('venditori_interni')) || 0,
+        ltv_annualizzato: ltv,
+        conversione_freddo: cf,
+        conversione_referral: cr,
+        punteggi_realta: { area1_relazionale: r1, area2_automazione: r2, area3_posizionamento: r3, area4_crm: r4 },
+        punteggi_desiderio: { area1_relazionale: d1, area2_automazione: d2, area3_posizionamento: d3, area4_crm: d4 },
+        gap_per_area: gapMap,
+        gap_totale: gapTot,
+        ferita_principale: ferita,
+        ferita_principale_label: labMap[ferita],
+        livello_maturita: mat,
+        livello_maturita_label: matLab,
+        potenziale_referral_dormiente: Math.round(ca * 0.15 * ltv),
+        delta_conversione_mensile: Math.round(((cr - cf) / 100) * 10 * ltv),
+        costo_inefficienza_annua: Math.round(calcolaCostoInefficienzaAnnua()),
+        perdita_pipeline_annua: Math.round(calcolaPerdita_PipelineAnnua()),
+        note_consulente: getVal('note_consulente'),
+        risposte_area1: {
+          a1_q1: getValue('a1_q1_risposta'),
+          a1_q2: getValue('a1_q2_risposta'),
+          a1_q3: getValue('a1_q3_risposta'),
+          a1_q4: getValue('a1_q4_risposta'),
+          a1_q5: getValue('a1_q5_risposta'),
+          a1_q6: getValue('a1_q6_risposta')
+        },
+        risposte_area2: {
+          a2_q1: getValue('a2_q1_risposta'),
+          a2_q2_ore: parseFloat(getValue('a2_q2_ore')) || 0,
+          a2_q2_costo: parseFloat(getValue('a2_q2_costo')) || 25,
+          a2_q3: getValue('a2_q3_risposta'),
+          a2_q4: getValue('a2_q4_risposta'),
+          a2_q5: getValue('a2_q5_risposta')
+        },
+        risposte_area3: {
+          a3_q1: getValue('a3_q1_risposta'),
+          a3_q2: getValue('a3_q2_risposta'),
+          a3_q3: getValue('a3_q3_risposta'),
+          a3_q4: getValue('a3_q4_risposta'),
+          a3_q5: getValue('a3_q5_risposta')
+        },
+        risposte_area4: {
+          a4_q1: getValue('a4_q1_risposta'),
+          a4_q2_perc: parseFloat(getValue('a4_q2_perc')) || 0,
+          a4_q2_trattative: parseFloat(getValue('a4_q2_trattative')) || 0,
+          a4_q3: getValue('a4_q3_risposta'),
+          a4_q4: getValue('a4_q4_risposta'),
+          a4_q5: getValue('a4_q5_risposta')
+        }
+      };
+
+      try {
+        const resp = await fetch(WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+          boxOk.style.display = 'block';
+          localStorage.removeItem(LS_KEY);
+          spin.style.display = 'none';
+        } else {
+          throw new Error('HTTP ' + resp.status);
+        }
+      } catch (e) {
+        spin.style.display = 'none';
+        boxErr.style.display = 'block';
+        btn.disabled = false;
+      }
+    }
+
+    // TEST CONNECTION
+    async function testConnection() {
+      const btn = document.getElementById('btn-test');
+      btn.classList.add('testing');
+      btn.textContent = '⏳ Test...';
+      // Leggi consulente selezionato
+      const consulenteVal = document.getElementById('consulente').value || '';
+      const cParts = consulenteVal.split('|');
+      const consulenteNome = cParts[0] || 'TEST — Consulente';
+      const consulenteEmail = cParts[1] || '';
+      const testPayload = {
+        _test: true,
+        consulente_nome: consulenteNome + ' [TEST]',
+        consulente_email: consulenteEmail,
+        cliente_nome: 'Mario Rossi [TEST]',
+        cliente_email: 'oscarrsm@me.com',
+        cliente_azienda: 'Azienda Test Srl',
+        cliente_sito_web: 'https://www.aziendatest.it',
+        cliente_partita_iva: '01234567890',
+        cliente_settore: 'consulenza',
+        cliente_fatturato: '1M\u20132M',
+        cliente_dipendenti: '6\u201315',
+        prodotto_principale: 'Software CRM per PMI — automatizza vendite e follow-up',
+        clienti_attivi: 120,
+        database_storico: 450,
+        venditori_interni: 3,
+        ltv_annualizzato: 2500,
+        conversione_freddo: 10,
+        conversione_referral: 35,
+        punteggi_realta: { area1_relazionale: 3, area2_automazione: 5, area3_posizionamento: 6, area4_crm: 4 },
+        punteggi_desiderio: { area1_relazionale: 9, area2_automazione: 7, area3_posizionamento: 8, area4_crm: 8 },
+        gap_per_area: { area1_relazionale: 6, area2_automazione: 2, area3_posizionamento: 2, area4_crm: 4 },
+        gap_totale: 3.50,
+        ferita_principale: 'area1_relazionale',
+        ferita_principale_label: 'Ingegneria Relazionale',
+        livello_maturita: 2,
+        livello_maturita_label: 'Gestito (instabile)',
+        potenziale_referral_dormiente: 45000,
+        delta_conversione_mensile: 625,
+        costo_inefficienza_annua: 19500,
+        perdita_pipeline_annua: 54000,
+        note_consulente: 'Payload di test automatico v3 \u2014 verificare ricezione di tutti i campi.',
+        risposte_area1: {
+          a1_q1: 'Circa 5-6 segnalazioni spontanee nell\'ultimo anno, tutte da clienti fedeli',
+          a1_q2: 'Va a istinto, nessun sistema strutturato. Le segnalazioni arrivano via WhatsApp',
+          a1_q3: 'Nessun processo formale. Il commerciale la gestisce come ritiene opportuno',
+          a1_q4: 'Molto più alta, stima circa il doppio rispetto a un lead freddo',
+          a1_q5: 'No, mai compensato formalmente. A volte un ringraziamento verbale',
+          a1_q6: 'Cambierebbe tutto — potrei finalmente pianificare la crescita in modo prevedibile'
+        },
+        risposte_area2: {
+          a2_q1: 'Inserimento manuale offerte nel gestionale, follow-up via email copiati a mano, report settimanali in Excel',
+          a2_q2_ore: 5,
+          a2_q2_costo: 25,
+          a2_q3: 'Manuali al 100%. Newsletter mandata una volta al mese a mano',
+          a2_q4: 'Usiamo solo Excel e Outlook. Niente di automatizzato. Abbiamo guardato HubSpot ma non l\'abbiamo implementato',
+          a2_q5: '1) Follow-up automatico post-offerta  2) Report settimanale vendite  3) Inserimento lead da sito web nel CRM'
+        },
+        risposte_area3: {
+          a3_q1: 'Qualità, serietà e lunga esperienza nel settore',
+          a3_q2: 'Onestamente non abbiamo un differenziatore chiaro. Siamo bravi ma simili ai competitor',
+          a3_q3: 'Parzialmente. Si capisce il settore ma non il cliente ideale o il risultato specifico',
+          a3_q4: 'Abbiamo fatto Google Ads l\'anno scorso. CTR 2%, poche conversioni. Budget sprecato',
+          a3_q5: 'Tanta curiosità e poco acquisto. I lead ci chiedono preventivi e poi spariscono'
+        },
+        risposte_area4: {
+          a4_q1: 'Mix di memoria del commerciale e foglio Excel condiviso. Nessun CRM vero',
+          a4_q2_perc: 30,
+          a4_q2_trattative: 15,
+          a4_q3: 'No, dipende dalla bravura del singolo. Se il commerciale va in ferie, tutto si ferma',
+          a4_q4: 'Mediamente 45-60 giorni. Il collo di bottiglia è l\'approvazione del preventivo interno',
+          a4_q5: 'Partirebbe quasi da zero. Non c\'è documentazione del processo di vendita'
+        }
+      };
+      try {
+        const resp = await fetch(WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testPayload)
+        });
+        const statusText = resp.status + (resp.statusText ? ' ' + resp.statusText : '');
+        showTestModal(resp.ok, statusText);
+      } catch (e) {
+        showTestModal(false, e.message || 'Errore di rete / CORS');
+      } finally {
+        btn.classList.remove('testing');
+        btn.textContent = '🔌 TEST';
+      }
+    }
+
+    function showTestModal(ok, detail) {
+      document.getElementById('modal-icon').textContent = ok ? '✅' : '❌';
+      document.getElementById('modal-title').textContent = ok ? 'CONNECTION OK' : 'CONNECTION KO';
+      document.getElementById('modal-detail').textContent = ok
+        ? 'Il webhook N8n ha risposto correttamente.\nHTTP ' + detail
+        : 'Il webhook N8n non ha risposto come atteso.\nDettaglio: ' + detail;
+      document.getElementById('test-modal').className = ok ? 'modal-ok' : 'modal-ko';
+      document.getElementById('test-modal-overlay').classList.add('open');
+    }
+
+    function closeTestModal(e) {
+      if (e && e.target && e.target.id !== 'test-modal-overlay') return;
+      document.getElementById('test-modal-overlay').classList.remove('open');
+    }
+
+    // INIT
+    document.addEventListener('DOMContentLoaded', () => {
+      const restored = loadSession();
+      // Attach listeners to all fields
+      FIELD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => { debounceSave(); if (['clienti_attivi', 'ltv_annualizzato', 'conversione_freddo', 'conversione_referral'].includes(id)) updateCalcoli(); });
+        el.addEventListener('change', () => { debounceSave(); if (['clienti_attivi', 'ltv_annualizzato', 'conversione_freddo', 'conversione_referral'].includes(id)) updateCalcoli(); });
+      });
+
+      // Init all sliders
+      ['area1', 'area2', 'area3', 'area4'].forEach(a => updateSlider(a));
+      updateCalcoli();
+
+      // Abilita bottone TEST solo quando consulente è selezionato
+      const consulenteEl = document.getElementById('consulente');
+      const btnTest = document.getElementById('btn-test');
+      function aggiornaTestBtn() {
+        btnTest.disabled = !consulenteEl.value;
+        btnTest.title = consulenteEl.value ? 'Invia payload di test al webhook' : 'Seleziona prima il consulente';
+      }
+      if (consulenteEl) consulenteEl.addEventListener('change', aggiornaTestBtn);
+      aggiornaTestBtn(); // valuta subito (es. dopo restore sessione)
+
+      // Calcoli live Area 2
+      ['a2_q2_ore', 'a2_q2_costo', 'venditori_interni'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', aggiornaCostoInefficienzaLive);
+      });
+
+      // Calcoli live Area 4
+      ['a4_q2_perc', 'a4_q2_trattative', 'ltv_annualizzato'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', aggiornaPerdita_PipelineLive);
+      });
+
+      showSection(currentSection);
+      if (restored) setTimeout(() => showToast('\u2705 Sessione ripristinata'), 400);
+      updateProgress();
+    });
+  </script>
+</body>
+
+</html>

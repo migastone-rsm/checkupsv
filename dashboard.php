@@ -539,7 +539,11 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'genera_offerta' && $
 
     $resp_data = json_decode($response, true);
     if ($code >= 200 && $code < 300 && !empty($resp_data['doc_url'])) {
+        // Workflow sincrono: ha già il doc pronto
         echo json_encode(['success' => true, 'doc_url' => $resp_data['doc_url']]);
+    } elseif ($code >= 200 && $code < 300 && !empty($resp_data['success'])) {
+        // Workflow asincrono: avviato correttamente, doc_url arriverà via polling
+        echo json_encode(['success' => true, 'polling' => true]);
     } else {
         echo json_encode([
             'success' => false,

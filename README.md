@@ -51,6 +51,9 @@ Il sistema comprende 3 componenti principali:
 | `report_accessed` / `report_accessed_at` | BOOL/TIMESTAMP | Tracking accesso al report |
 | `trascrizione` | TEXT | Trascrizione della call (editabile dalla dashboard) |
 | `analisi_call` | TEXT | Analisi AI della call generata da Perplexity (auto-generata al salvataggio trascrizione) |
+| `offerta_doc_url` | TEXT | URL diretto al Google Doc contenente l'offerta |
+| `offerta_generata_at` | TIMESTAMPTZ | Data e ora di completamento della generazione offerta |
+| `offerta_in_elaborazione` | BOOLEAN | Flag di stato (true durante elaborazione N8n, false al termine) |
 
 ### Tabelle di supporto
 
@@ -131,7 +134,7 @@ Pannello di amministrazione riservato agli operatori Migastone, con autenticazio
 | 🎯 **Analisi** | Cyan | Disponibile (cyan) se analisi generata, grigio (🔒) se assente. Apre modal con pagella + analisi discorsiva |
 | 📞 **Chiama** | Verde | Link `tel:` diretto al cellulare del prospect |
 | 💬 **WA** | Verde | Link `wa.me/` con numero pulito (solo cifre) |
-| 📋 **Offerta** | Arancio | Placeholder — funzione in sviluppo |
+| 📋 **Offerta** | Arancio / Blu | Apre modal per selezionare i prodotti. Generando l'offerta passa a `in_elaborazione` (icona 📄 grigia pulsante) attivando polling ogni 4s. A termine elaborazione diventa blu ed è un link diretto al Google Doc |
 | 🗑️ **Cancella** | Rosso | Elimina il record da Supabase dopo conferma. Rimuove la riga con animazione fade |
 
 - **Badge GAP** colorati: rosso (≥5), arancio (≥3), verde (<3)
@@ -183,6 +186,8 @@ DASH_SECRET      → sv-dash-2026-migastone (segreto HMAC per bypass OTP)
 | `?ajax=analisi_call` | POST | Genera analisi con Perplexity + salva in `analisi_call` |
 | `?ajax=get_analisi` | POST | Legge `analisi_call` salvata (senza rigenerare) |
 | `?ajax=delete` | POST | Elimina il record da `Checkup_SV` |
+| `?ajax=genera_offerta` | POST | Imposta `offerta_in_elaborazione = true` e chiama webhook N8n |
+| `?ajax=poll_offerta` | GET | Polling di stato offerta (ritorna `offerta_doc_url` se pronta) |
 
 ---
 

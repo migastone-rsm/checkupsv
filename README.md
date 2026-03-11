@@ -17,6 +17,7 @@ Il sistema comprende 3 componenti principali:
 | `index.html` | HTML + JS | Form diagnostico multi-step per il consulente |
 | `dashboard.php` | PHP | Dashboard operatori con login OTP e gestione record |
 | `report.php` | PHP | Pagina referto cliente con accesso OTP |
+| `config.php` | PHP | File di configurazione centralizzato (chiavi API e segreti) |
 
 ---
 
@@ -157,7 +158,7 @@ Il prompt segue il **Metodo Stoico** e include le istruzioni del file `01_Call P
 
 Quando dalla dashboard si clicca **📄 Report**, l'URL include un parametro `dtok` — un token HMAC-SHA256 (16 char) firmato con `DASH_SECRET` e con finestra di validità di ±1 ora. `report.php` verifica il token e, se valido, salta la richiesta di OTP e marca la sessione PHP come verificata.
 
-#### Costanti di configurazione
+#### Costanti di configurazione (in `config.php` e altri script)
 
 ```php
 SUPABASE_URL     → https://eywxidahsumzrlzwnfev.supabase.co

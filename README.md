@@ -187,7 +187,7 @@ DASH_SECRET      → sv-dash-2026-migastone (segreto HMAC per bypass OTP)
 | `?ajax=analisi_call` | POST | Genera analisi con Perplexity + salva in `analisi_call` |
 | `?ajax=get_analisi` | POST | Legge `analisi_call` salvata (senza rigenerare) |
 | `?ajax=delete` | POST | Elimina il record da `Checkup_SV` |
-| `?ajax=genera_offerta` | POST | Imposta `offerta_in_elaborazione = true` e chiama webhook N8n |
+| `?ajax=genera_offerta` | POST | Imposta `offerta_in_elaborazione = true` e chiama webhook N8n indicando l'UUID in `id` e `checkup_id` (gestisce risp. sincrone e asincrone) |
 | `?ajax=poll_offerta` | GET | Polling di stato offerta (ritorna `offerta_doc_url` se pronta) |
 
 ---

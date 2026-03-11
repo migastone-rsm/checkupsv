@@ -32,6 +32,7 @@ Il sistema comprende 3 componenti principali:
 | `cliente_nome` / `cliente_email` / `cliente_azienda` | TEXT | Dati anagrafici prospect |
 | `cliente_partita_iva` | TEXT UNIQUE | P.IVA prospect |
 | `cliente_cellulare` / `cliente_sito_web` | TEXT | Contatti |
+| Dati Commerciali | VARIE | Es: `fatturato`, `dipendenti`, `lead_mensili`, `investimento_pubblicita`, `database_storico`, etc. |
 | `punteggi_realta` | JSONB | Punteggi realtà per le 4 aree (scala 1-10) |
 | `punteggi_desiderio` | JSONB | Punteggi desiderio per le 4 aree (scala 1-10) |
 | `gap_per_area` | JSONB | GAP per area: `{area1_relazionale, area2_automazione, area3_posizionamento, area4_crm}` |
@@ -76,8 +77,8 @@ Il form multi-step che guida il consulente durante la call con il prospect.
 | Sezione | ID | Contenuto |
 |---------|----|-----------|
 | 0 | `sec0` | Selezione consulente (dropdown hardcoded) |
-| 1 | `sec1` | **Blocco 0** — Dati aziendali e commerciali |
-| 2 | `sec2` | **Area 1** — Ingegneria Relazionale (referral, network) |
+| 1 | `sec1` | **Blocco 0** — Dati aziendali e commerciali (inclusi lead mensili e inv. pubblicità) |
+| 2 | `sec2` | **Area 1** — Ingegneria Relazionale (referenze, network, clienti storici) |
 | 3 | `sec3` | **Area 2** — Automazione e Processi |
 | 4 | `sec4` | **Area 3** — Posizionamento e Marketing |
 | 5 | `sec5` | **Area 4** — CRM e Gestione Pipeline |

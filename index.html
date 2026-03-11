@@ -861,7 +861,7 @@
       <div class="field-row">
         <div class="field"><label for="clienti_attivi">N° clienti attivi</label><input type="number" id="clienti_attivi"
             min="0" placeholder="120"></div>
-        <div class="field"><label for="database_storico">Database storico totale</label><input type="number"
+        <div class="field"><label for="database_storico">Database storico totale (clienti + lead)</label><input type="number"
             id="database_storico" min="0" placeholder="450"></div>
       </div>
       <div class="field-row">
@@ -873,6 +873,10 @@
       <div class="field">
         <label for="conversione_referral">% conversione lead REFERENZIATO (es: 35)</label>
         <input type="number" id="conversione_referral" min="0" max="100" placeholder="35">
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="lead_mensili">N° lead generati al mese</label><input type="number" id="lead_mensili" min="0" placeholder="30"></div>
+        <div class="field"><label for="investimento_pubblicita">Investimento in pubblicità all'anno (€)</label><div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600">€</span><input type="number" id="investimento_pubblicita" min="0" placeholder="12000" style="flex:1"></div></div>
       </div>
 
       <!-- BOX CALCOLI -->
@@ -900,7 +904,7 @@
     <div class="section" id="sec2">
       <div class="section-header">
         <h2>🤝 AREA 1 — Ingegneria Relazionale</h2>
-        <p>Network, referenze, sistema di segnalazioni strutturate</p>
+        <p>Network, referenze, sistema di referenze strutturate</p>
       </div>
       <div class="box-stoica">
         <strong>SOTTO IL CONTROLLO DEL PROSPECT:</strong> i clienti soddisfatti esistono, i contatti dei partner
@@ -912,13 +916,12 @@
       <div class="box-domande">
         <h4>💬 Domande Guida Coach</h4>
         <div class="domanda-coach">
-          <label for="a1_q1_risposta"><strong>1. Quante segnalazioni avete ricevuto nell'ultimo anno dai
+          <label for="a1_q1_risposta"><strong>1. Quante referenze avete ricevuto nell'ultimo anno dai
               clienti?</strong><span class="nota-coach">Se dice 'poche' o 'nessuna' → gap alto probabile</span></label>
-          <textarea id="a1_q1_risposta" name="a1_q1_risposta" rows="3" maxlength="500"
-            placeholder="Risposta del prospect..."></textarea>
+          <input type="number" id="a1_q1_risposta" name="a1_q1_risposta" min="0" placeholder="es: 5">
         </div>
         <div class="domanda-coach">
-          <label for="a1_q2_risposta"><strong>2. Avete un sistema per raccogliere e gestire le segnalazioni, o va a
+          <label for="a1_q2_risposta"><strong>2. Avete un sistema per raccogliere e gestire le referenze, o va a
               istinto?</strong><span class="nota-coach">Cattura: CRM, Excel, memoria, niente. Parola chiave:
               sistematico</span></label>
           <textarea id="a1_q2_risposta" name="a1_q2_risposta" rows="3" maxlength="500"
@@ -1264,7 +1267,7 @@
     const FIELD_IDS = [
       'consulente', 'cliente_nome', 'cliente_email', 'cliente_cellulare', 'cliente_azienda', 'cliente_sito_web', 'cliente_partita_iva', 'cliente_settore',
       'cliente_fatturato', 'cliente_dipendenti', 'clienti_attivi', 'database_storico', 'venditori_interni',
-      'ltv_annualizzato', 'conversione_freddo', 'conversione_referral', 'prodotto_principale',
+      'ltv_annualizzato', 'conversione_freddo', 'conversione_referral', 'lead_mensili', 'investimento_pubblicita', 'prodotto_principale',
       'realta_area1', 'desiderio_area1', 'realta_area2', 'desiderio_area2',
       'realta_area3', 'desiderio_area3', 'realta_area4', 'desiderio_area4', 'note_consulente',
       // Area 1
@@ -1660,6 +1663,8 @@
         clienti_attivi: ca,
         database_storico: parseFloat(getVal('database_storico')) || 0,
         venditori_interni: parseFloat(getVal('venditori_interni')) || 0,
+        lead_mensili: parseFloat(getVal('lead_mensili')) || 0,
+        investimento_pubblicita: parseFloat(getVal('investimento_pubblicita')) || 0,
         ltv_annualizzato: ltv,
         conversione_freddo: cf,
         conversione_referral: cr,

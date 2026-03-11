@@ -303,7 +303,7 @@ if ($operator) {
     // Filter
     $filter_op = trim($_GET['op'] ?? $operator['email']);
 
-    $q = 'Checkup_SV?select=id,created_at,consulente_nome,consulente_email,cliente_nome,cliente_email,cliente_azienda,cliente_partita_iva,cliente_cellulare,ferita_principale_label,gap_totale,livello_maturita,trascrizione,analisi_call&order=created_at.desc';
+    $q = 'Checkup_SV?select=id,created_at,consulente_nome,consulente_email,cliente_nome,cliente_email,cliente_azienda,cliente_partita_iva,cliente_cellulare,ferita_principale_label,gap_totale,livello_maturita,trascrizione,analisi_call,offerta_doc_url,offerta_generata_at,offerta_in_elaborazione&order=created_at.desc';
     if ($filter_op && $filter_op !== 'all') {
         $q .= '&consulente_email=eq.' . urlencode($filter_op);
     }
@@ -447,6 +447,104 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'edit_checkup' && $_S
         echo json_encode(['ok' => true]);
     } else {
         echo json_encode(['ok' => false, 'msg' => 'Impossibile aggiornare i dati.']);
+    }
+    exit;
+}
+
+// ─── AJAX: poll stato offerta ────────────────────────────────────────────────
+if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'poll_offerta' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    header('Content-Type: application/json');
+    $rid = preg_replace('/[^a-f0-9\-]/', '', $_GET['id'] ?? '');
+    if (!$rid) { echo json_encode(['in_elaborazione' => false, 'doc_url' => null]); exit; }
+
+    $rows = sb_get('Checkup_SV?id=eq.' . $rid . '&select=offerta_doc_url,offerta_in_elaborazione');
+    $row  = $rows[0] ?? [];
+    echo json_encode([
+        'in_elaborazione' => (bool)($row['offerta_in_elaborazione'] ?? false),
+        'doc_url'         => $row['offerta_doc_url'] ?? null,
+    ]);
+    exit;
+}
+
+// ─── AJAX: genera offerta → chiama webhook N8n ──────────────────────────────
+if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'genera_offerta' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    $body = json_decode(file_get_contents('php://input'), true);
+
+    $checkup_id = preg_replace('/[^a-f0-9\-]/', '', $body['checkup_id'] ?? '');
+    if (!$checkup_id) {
+        echo json_encode(['success' => false, 'error' => 'ID checkup non valido']);
+        exit;
+    }
+
+    $payload = [
+        'checkup_id'          => $checkup_id,
+        'consulente'          => $operator['nome'] ?? '',
+        'includi_app'         => $body['includi_app']         ?? 'NO',
+        'includi_app_pro'     => $body['includi_app_pro']     ?? 'NO',
+        'includi_scouting'    => $body['includi_scouting']    ?? 'NO',
+        'includi_automazione' => $body['includi_automazione'] ?? 'NO',
+        'includi_migacrm'     => $body['includi_migacrm']     ?? 'NO',
+        'includi_enterprise'  => $body['includi_enterprise']  ?? 'NO',
+        'importo_app'         => (float)($body['importo_app']         ?? 0),
+        'importo_app_pro'     => (float)($body['importo_app_pro']     ?? 0),
+        'importo_scouting'    => (float)($body['importo_scouting']    ?? 0),
+        'importo_automazione' => (float)($body['importo_automazione'] ?? 0),
+        'importo_migacrm'     => (float)($body['importo_migacrm']     ?? 0),
+        'importo_enterprise'  => (float)($body['importo_enterprise']  ?? 0),
+        'desc_automazione'    => substr(strip_tags($body['desc_automazione'] ?? ''), 0, 500),
+        'totale'              => (float)($body['totale'] ?? 0),
+    ];
+
+    // Segna in Supabase che l'offerta è in elaborazione (resetta url precedente)
+    sb_patch('Checkup_SV?id=eq.' . $checkup_id, [
+        'offerta_in_elaborazione' => true,
+        'offerta_doc_url'         => null,
+        'offerta_generata_at'     => null,
+    ]);
+
+    // Webhook N8n (da configurare in config.php quando il workflow è pronto)
+    $webhook_url = defined('N8N_OFFERTA_WEBHOOK') ? N8N_OFFERTA_WEBHOOK : '';
+
+    if (!$webhook_url) {
+        // Webhook non ancora configurato — l'icona grigia rimane attiva per test
+        echo json_encode([
+            'success' => true,
+            'warning' => 'Webhook N8n non ancora configurato. Aggiungi N8N_OFFERTA_WEBHOOK in config.php.',
+            'payload' => $payload,
+        ]);
+        exit;
+    }
+
+    $ch = curl_init($webhook_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err_curl = curl_error($ch);
+    curl_close($ch);
+
+    if ($err_curl) {
+        echo json_encode(['success' => false, 'error' => 'Errore cURL: ' . $err_curl]);
+        exit;
+    }
+
+    $resp_data = json_decode($response, true);
+    if ($code >= 200 && $code < 300 && !empty($resp_data['doc_url'])) {
+        echo json_encode(['success' => true, 'doc_url' => $resp_data['doc_url']]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error'   => $resp_data['error'] ?? 'Errore generazione (HTTP ' . $code . ')',
+        ]);
     }
     exit;
 }
@@ -1040,10 +1138,265 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
         }
 
         .btn-offerta {
-            background: #E5E7EB;
-            color: #6B7280;
-            border: 1px solid #D1D5DB;
+            background: #EA580C;
+            color: #fff;
+            border: 1px solid #C2410C;
         }
+
+        .btn-offerta:hover {
+            background: #C2410C;
+        }
+
+        /* ── ICONA GOOGLE DOC OFFERTA ── */
+        .offerta-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .gdoc-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            text-decoration: none;
+            transition: transform .15s, opacity .15s;
+            flex-shrink: 0;
+        }
+
+        .gdoc-icon.pending {
+            background: #E5E7EB;
+            color: #9CA3AF;
+            cursor: default;
+            animation: pulse-grey 1.5s ease-in-out infinite;
+        }
+
+        .gdoc-icon.ready {
+            background: #1A73E8;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .gdoc-icon.ready:hover {
+            transform: scale(1.12);
+            opacity: .9;
+        }
+
+        @keyframes pulse-grey {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: .45; }
+        }
+
+        /* ── MODAL OFFERTA ── */
+        .modal-offerta-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 600;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-offerta-overlay.open {
+            display: flex;
+        }
+
+        .modal-offerta-box {
+            background: #fff;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 620px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 64px rgba(0,0,0,.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-offerta-header {
+            background: #EA580C;
+            color: #fff;
+            padding: 18px 22px;
+            border-radius: 14px 14px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-offerta-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-offerta-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,.75);
+            font-size: 24px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 4px;
+        }
+
+        .modal-offerta-close:hover { color: #fff; }
+
+        .modal-offerta-body {
+            padding: 22px;
+            flex: 1;
+        }
+
+        .offerta-subtitle {
+            font-size: 13px;
+            color: #6B7280;
+            margin-bottom: 18px;
+        }
+
+        .offerta-row {
+            display: grid;
+            grid-template-columns: 36px 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        .offerta-row:last-child { border-bottom: none; }
+
+        .offerta-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: #EA580C;
+            cursor: pointer;
+        }
+
+        .offerta-label-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .offerta-product-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .offerta-product-desc {
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .offerta-desc-row {
+            display: none;
+            grid-column: 2 / -1;
+            padding: 8px 0 4px;
+        }
+
+        .offerta-desc-row.visible { display: block; }
+
+        .offerta-desc-input {
+            width: 100%;
+            border: 1.5px solid #D1D5DB;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: none;
+            min-height: 60px;
+        }
+
+        .offerta-desc-input:focus {
+            outline: none;
+            border-color: #EA580C;
+            box-shadow: 0 0 0 2px rgba(234,88,12,.12);
+        }
+
+        .offerta-importo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .offerta-importo input[type=number] {
+            width: 90px;
+            border: 1.5px solid #D1D5DB;
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: right;
+            font-family: inherit;
+        }
+
+        .offerta-importo input[type=number]:focus {
+            outline: none;
+            border-color: #EA580C;
+        }
+
+        .offerta-importo span {
+            font-size: 13px;
+            color: #6B7280;
+        }
+
+        .offerta-totale-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 2px solid #EA580C;
+        }
+
+        .offerta-totale-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .offerta-totale-valore {
+            font-size: 20px;
+            font-weight: 800;
+            color: #EA580C;
+        }
+
+        .modal-offerta-footer {
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-top: 1px solid #E5E7EB;
+        }
+
+        .btn-genera-offerta {
+            background: #EA580C;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 11px 26px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+
+        .btn-genera-offerta:hover { opacity: .88; }
+        .btn-genera-offerta:disabled { opacity: .5; cursor: not-allowed; }
+
+        .offerta-msg {
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .offerta-msg.ok { color: #065F46; }
+        .offerta-msg.err { color: #B91C1C; }
 
         /* ── EMPTY STATE ── */
         .empty-state {
@@ -1568,12 +1921,35 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                                 <button class="btn-action btn-wa" disabled title="Cellulare non disponibile">WA</button>
                                             <?php endif; ?>
                                         </td>
-                                        <!-- Offerta (placeholder) -->
+                                        <!-- Offerta -->
                                         <td>
-                                            <button class="btn-action btn-offerta" title="Funzione in sviluppo"
-                                                onclick="alert('Funzione in sviluppo')">
-                                                📋 Offerta
-                                            </button>
+                                            <div class="offerta-cell">
+                                                <button class="btn-action btn-offerta" title="Crea Offerta"
+                                                    onclick="openOfferta('<?= htmlspecialchars($rid, ENT_QUOTES) ?>', '<?= htmlspecialchars($row['cliente_azienda'] ?? '', ENT_QUOTES) ?>')">
+                                                    📋 Offerta
+                                                </button>
+                                                <?php
+                                                $in_elab  = !empty($row['offerta_in_elaborazione']);
+                                                $doc_url  = $row['offerta_doc_url'] ?? '';
+                                                if ($in_elab || $doc_url):
+                                                ?>
+                                                <?php if ($doc_url && !$in_elab): ?>
+                                                    <a class="gdoc-icon ready"
+                                                       href="<?= htmlspecialchars($doc_url, ENT_QUOTES) ?>"
+                                                       target="_blank"
+                                                       title="Apri offerta Google Doc"
+                                                       id="gdoc-<?= htmlspecialchars($rid, ENT_QUOTES) ?>">
+                                                        📄
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="gdoc-icon pending"
+                                                          id="gdoc-<?= htmlspecialchars($rid, ENT_QUOTES) ?>"
+                                                          title="Offerta in elaborazione...">
+                                                        📄
+                                                    </span>
+                                                <?php endif; ?>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                         <!-- Cancella -->
                                         <td>
@@ -2248,6 +2624,355 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
         </div>
 
     <?php endif; ?>
+
+    <!-- ══════════════════════════════════════════
+         MODAL CREA OFFERTA
+    ══════════════════════════════════════════ -->
+    <div class="modal-offerta-overlay" id="modal-offerta" onclick="closeOffertaOverlay(event)">
+        <div class="modal-offerta-box">
+
+            <div class="modal-offerta-header">
+                <h3>📋 Crea Offerta — <span id="offerta-azienda-title"></span></h3>
+                <button class="modal-offerta-close" onclick="closeOfferta()">✕</button>
+            </div>
+
+            <div class="modal-offerta-body">
+                <p class="offerta-subtitle">Seleziona i prodotti da includere nell'offerta e conferma gli importi.</p>
+
+                <!-- APP PRM SV -->
+                <div class="offerta-row" id="row-app">
+                    <input type="checkbox" class="offerta-checkbox" id="chk-app"
+                        onchange="toggleImporto('app'); ricalcolaTotale()">
+                    <div class="offerta-label-wrap">
+                        <span class="offerta-product-name">APP PRM SV</span>
+                        <span class="offerta-product-desc">App brandizzata iOS/Android per gestione referral</span>
+                    </div>
+                    <div class="offerta-importo">
+                        <input type="number" id="imp-app" value="3497" min="0" step="1"
+                            oninput="ricalcolaTotale()" disabled>
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <!-- APP UPGRADE PRO -->
+                <div class="offerta-row" id="row-app-pro">
+                    <input type="checkbox" class="offerta-checkbox" id="chk-app-pro"
+                        onchange="toggleImporto('app-pro'); ricalcolaTotale()">
+                    <div class="offerta-label-wrap">
+                        <span class="offerta-product-name">APP Upgrade PRO</span>
+                        <span class="offerta-product-desc">Server dedicato, CRM integration, verticalizzazioni</span>
+                    </div>
+                    <div class="offerta-importo">
+                        <input type="number" id="imp-app-pro" value="497" min="0" step="1"
+                            oninput="ricalcolaTotale()" disabled>
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <!-- SCOUTING -->
+                <div class="offerta-row" id="row-scouting">
+                    <input type="checkbox" class="offerta-checkbox" id="chk-scouting"
+                        onchange="toggleImporto('scouting'); ricalcolaTotale()">
+                    <div class="offerta-label-wrap">
+                        <span class="offerta-product-name">Scouting</span>
+                        <span class="offerta-product-desc">10 Connettori prequalificati + AIRA© Matching + Coaching</span>
+                    </div>
+                    <div class="offerta-importo">
+                        <input type="number" id="imp-scouting" value="1497" min="0" step="1"
+                            oninput="ricalcolaTotale()" disabled>
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <!-- AUTOMATION -->
+                <div class="offerta-row" id="row-automation">
+                    <input type="checkbox" class="offerta-checkbox" id="chk-automation"
+                        onchange="toggleImporto('automation'); toggleDesc('automation'); ricalcolaTotale()">
+                    <div class="offerta-label-wrap">
+                        <span class="offerta-product-name">Automation</span>
+                        <span class="offerta-product-desc">Flusso automazione su misura (N8N / Make / Zapier)</span>
+                    </div>
+                    <div class="offerta-importo">
+                        <input type="number" id="imp-automation" value="0" min="0" step="1"
+                            oninput="ricalcolaTotale()" disabled placeholder="Importo">
+                        <span>€</span>
+                    </div>
+                    <div class="offerta-desc-row" id="desc-row-automation">
+                        <textarea class="offerta-desc-input" id="desc-automation"
+                            placeholder="Descrivi l'automazione da realizzare (es. WhatsApp CRM sync, lead routing automatico...)"></textarea>
+                    </div>
+                </div>
+
+                <!-- MIGACRM -->
+                <div class="offerta-row" id="row-migacrm">
+                    <input type="checkbox" class="offerta-checkbox" id="chk-migacrm"
+                        onchange="toggleImporto('migacrm'); ricalcolaTotale()">
+                    <div class="offerta-label-wrap">
+                        <span class="offerta-product-name">MigaCRM</span>
+                        <span class="offerta-product-desc">CRM setup completo + formazione team (4 persone)</span>
+                    </div>
+                    <div class="offerta-importo">
+                        <input type="number" id="imp-migacrm" value="997" min="0" step="1"
+                            oninput="ricalcolaTotale()" disabled>
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <!-- ENTERPRISE -->
+                <div class="offerta-row" id="row-enterprise">
+                    <input type="checkbox" class="offerta-checkbox" id="chk-enterprise"
+                        onchange="toggleImporto('enterprise'); ricalcolaTotale()">
+                    <div class="offerta-label-wrap">
+                        <span class="offerta-product-name">Enterprise – Il Garante</span>
+                        <span class="offerta-product-desc">Kickoff 1 giornata (8h) + 3 mesi follow-up (24h)</span>
+                    </div>
+                    <div class="offerta-importo">
+                        <input type="number" id="imp-enterprise" value="4997" min="0" step="1"
+                            oninput="ricalcolaTotale()" disabled>
+                        <span>€</span>
+                    </div>
+                </div>
+
+                <!-- TOTALE -->
+                <div class="offerta-totale-row">
+                    <span class="offerta-totale-label">Totale Offerta</span>
+                    <span class="offerta-totale-valore">€ <span id="offerta-totale">0</span></span>
+                </div>
+            </div>
+
+            <div class="modal-offerta-footer">
+                <button class="btn-genera-offerta" id="btn-genera-offerta" onclick="generaOfferta()">
+                    🚀 Genera Offerta
+                </button>
+                <button class="btn-cancel" onclick="closeOfferta()">Annulla</button>
+                <span class="offerta-msg" id="offerta-msg"></span>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+    // ── MODAL OFFERTA ──────────────────────────────────────────────
+    var _offertaCheckupId = null;
+
+    function openOfferta(checkupId, azienda) {
+        _offertaCheckupId = checkupId;
+        document.getElementById('offerta-azienda-title').textContent = azienda || 'Cliente';
+        // Reset stato
+        ['app','app-pro','scouting','automation','migacrm','enterprise'].forEach(function(k) {
+            var chk = document.getElementById('chk-' + k);
+            var inp = document.getElementById('imp-' + k);
+            if (chk) chk.checked = false;
+            if (inp) inp.disabled = true;
+        });
+        var descRow = document.getElementById('desc-row-automation');
+        if (descRow) descRow.classList.remove('visible');
+        var descTxt = document.getElementById('desc-automation');
+        if (descTxt) descTxt.value = '';
+        document.getElementById('offerta-totale').textContent = '0';
+        document.getElementById('offerta-msg').textContent = '';
+        document.getElementById('btn-genera-offerta').disabled = false;
+        document.getElementById('modal-offerta').classList.add('open');
+    }
+
+    function closeOfferta() {
+        document.getElementById('modal-offerta').classList.remove('open');
+    }
+
+    function closeOffertaOverlay(e) {
+        if (e.target === document.getElementById('modal-offerta')) closeOfferta();
+    }
+
+    function toggleImporto(key) {
+        var chk = document.getElementById('chk-' + key);
+        var inp = document.getElementById('imp-' + key);
+        if (inp) inp.disabled = !chk.checked;
+    }
+
+    function toggleDesc(key) {
+        var chk = document.getElementById('chk-' + key);
+        var row = document.getElementById('desc-row-' + key);
+        if (row) {
+            if (chk.checked) row.classList.add('visible');
+            else row.classList.remove('visible');
+        }
+    }
+
+    function ricalcolaTotale() {
+        var prodotti = ['app','app-pro','scouting','automation','migacrm','enterprise'];
+        var totale = 0;
+        prodotti.forEach(function(k) {
+            var chk = document.getElementById('chk-' + k);
+            var inp = document.getElementById('imp-' + k);
+            if (chk && chk.checked && inp) {
+                totale += parseFloat(inp.value) || 0;
+            }
+        });
+        document.getElementById('offerta-totale').textContent = totale.toLocaleString('it-IT');
+    }
+
+    function generaOfferta() {
+        var payload = {
+            checkup_id: _offertaCheckupId,
+            includi_app:        document.getElementById('chk-app').checked       ? 'SI' : 'NO',
+            includi_app_pro:    document.getElementById('chk-app-pro').checked   ? 'SI' : 'NO',
+            includi_scouting:   document.getElementById('chk-scouting').checked  ? 'SI' : 'NO',
+            includi_automazione:document.getElementById('chk-automation').checked ? 'SI' : 'NO',
+            includi_migacrm:    document.getElementById('chk-migacrm').checked   ? 'SI' : 'NO',
+            includi_enterprise: document.getElementById('chk-enterprise').checked ? 'SI' : 'NO',
+            importo_app:        parseFloat(document.getElementById('imp-app').value)        || 0,
+            importo_app_pro:    parseFloat(document.getElementById('imp-app-pro').value)    || 0,
+            importo_scouting:   parseFloat(document.getElementById('imp-scouting').value)   || 0,
+            importo_automazione:parseFloat(document.getElementById('imp-automation').value) || 0,
+            importo_migacrm:    parseFloat(document.getElementById('imp-migacrm').value)    || 0,
+            importo_enterprise: parseFloat(document.getElementById('imp-enterprise').value) || 0,
+            desc_automazione:   document.getElementById('desc-automation').value.trim(),
+            totale:             parseFloat(document.getElementById('offerta-totale').textContent.replace(/\./g,'')) || 0
+        };
+
+        // Validazione: almeno un prodotto selezionato
+        var selezionati = ['app','app-pro','scouting','automation','migacrm','enterprise']
+            .filter(function(k){ return document.getElementById('chk-'+k).checked; });
+        if (selezionati.length === 0) {
+            setOffertaMsg('Seleziona almeno un prodotto.', 'err');
+            return;
+        }
+
+        // Validazione: se automation selezionata e importo = 0
+        if (document.getElementById('chk-automation').checked &&
+            (parseFloat(document.getElementById('imp-automation').value) || 0) === 0) {
+            setOffertaMsg("Inserisci l'importo per l'Automation.", 'err');
+            return;
+        }
+
+        var checkupId = _offertaCheckupId;
+
+        // Chiudi il popup immediatamente
+        closeOfferta();
+
+        // Mostra icona grigia pulsante nella riga
+        showGdocPending(checkupId);
+
+        // Invia al backend
+        fetch('?ajax=genera_offerta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                // Avvia polling su Supabase fino a quando offerta_in_elaborazione = false
+                startPollingOfferta(checkupId);
+            } else {
+                // Errore immediato: rimuovi l'icona grigia
+                removeGdocIcon(checkupId);
+                alert('Errore: ' + (data.error || 'Generazione fallita'));
+            }
+        })
+        .catch(function(err) {
+            removeGdocIcon(checkupId);
+            alert('Errore di rete: ' + err.message);
+        });
+    }
+
+    // Mostra/sostituisce icona grigia pulsante nella cella offerta
+    function showGdocPending(checkupId) {
+        var existing = document.getElementById('gdoc-' + checkupId);
+        if (existing) {
+            // Resetta: rimuovi eventuali classi ready/href e rimetti pending
+            existing.className = 'gdoc-icon pending';
+            existing.removeAttribute('href');
+            existing.removeAttribute('target');
+            existing.title = 'Offerta in elaborazione...';
+            // Rimuovi onclick se era un link
+            existing.onclick = null;
+            // Trasforma in span se era <a>
+            if (existing.tagName === 'A') {
+                var span = document.createElement('span');
+                span.className = 'gdoc-icon pending';
+                span.id = 'gdoc-' + checkupId;
+                span.title = 'Offerta in elaborazione...';
+                span.textContent = '📄';
+                existing.parentNode.replaceChild(span, existing);
+            }
+        } else {
+            // Crea nuova icona e aggiungila nella cella offerta
+            var cell = document.querySelector('button[onclick*="' + checkupId + '"]');
+            if (cell) {
+                var container = cell.closest('.offerta-cell') || cell.parentNode;
+                var span = document.createElement('span');
+                span.className = 'gdoc-icon pending';
+                span.id = 'gdoc-' + checkupId;
+                span.title = 'Offerta in elaborazione...';
+                span.textContent = '📄';
+                container.appendChild(span);
+            }
+        }
+    }
+
+    // Converte l'icona grigia in icona colorata con link
+    function showGdocReady(checkupId, docUrl) {
+        var el = document.getElementById('gdoc-' + checkupId);
+        if (!el) return;
+        var a = document.createElement('a');
+        a.className = 'gdoc-icon ready';
+        a.id = 'gdoc-' + checkupId;
+        a.href = docUrl;
+        a.target = '_blank';
+        a.title = 'Apri offerta Google Doc';
+        a.textContent = '📄';
+        el.parentNode.replaceChild(a, el);
+    }
+
+    // Rimuove l'icona (in caso di errore)
+    function removeGdocIcon(checkupId) {
+        var el = document.getElementById('gdoc-' + checkupId);
+        if (el) el.remove();
+    }
+
+    // Polling ogni 4 secondi su Supabase per controllare offerta_in_elaborazione e offerta_doc_url
+    var _pollingTimers = {};
+
+    function startPollingOfferta(checkupId) {
+        // Cancella polling precedente se esiste
+        if (_pollingTimers[checkupId]) {
+            clearInterval(_pollingTimers[checkupId]);
+        }
+        var attempts = 0;
+        var maxAttempts = 75; // 5 minuti max (75 × 4s)
+
+        _pollingTimers[checkupId] = setInterval(function() {
+            attempts++;
+            if (attempts > maxAttempts) {
+                clearInterval(_pollingTimers[checkupId]);
+                removeGdocIcon(checkupId);
+                alert('Timeout: la generazione dell\'offerta ha impiegato troppo tempo. Riprova.');
+                return;
+            }
+
+            fetch('?ajax=poll_offerta&id=' + encodeURIComponent(checkupId))
+                .then(function(r){ return r.json(); })
+                .then(function(data) {
+                    if (data.doc_url && !data.in_elaborazione) {
+                        clearInterval(_pollingTimers[checkupId]);
+                        showGdocReady(checkupId, data.doc_url);
+                    }
+                    // Se ancora in elaborazione, continua il polling
+                })
+                .catch(function() {
+                    // Errore di rete temporaneo: continua il polling
+                });
+        }, 4000);
+    }
+
+    function setOffertaMsg(txt, tipo) {
+        var el = document.getElementById('offerta-msg');
+        el.textContent = txt;
+        el.className = 'offerta-msg' + (tipo ? ' ' + tipo : '');
+    }
+    </script>
+
 </body>
 
 </html>

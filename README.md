@@ -126,6 +126,7 @@ Pannello di amministrazione riservato agli operatori Migastone, con autenticazio
 | Bottone | Colore | Comportamento |
 |---------|--------|---------------|
 | 📄 **Report** | Blu | Apre `report.php` in nuova tab **senza OTP** (bypass via token HMAC) |
+| ✏️ **Modifica** | Grigio | Apre modal per editare tutti i dati anagrafici e del checkup |
 | 📝 / ✅ **Trascrizione** | Viola / Verde | Viola = vuota, Verde = presente. Apre modal per editare e salvare la trascrizione. Al salvataggio avvia automaticamente l'analisi AI |
 | 🎯 **Analisi** | Cyan | Disponibile (cyan) se analisi generata, grigio (🔒) se assente. Apre modal con pagella + analisi discorsiva |
 | 📞 **Chiama** | Verde | Link `tel:` diretto al cellulare del prospect |
@@ -176,6 +177,8 @@ DASH_SECRET      → sv-dash-2026-migastone (segreto HMAC per bypass OTP)
 
 | Endpoint | Metodo | Descrizione |
 |----------|--------|-------------|
+| `?ajax=get_checkup_data` | GET | Recupera i dati del checkup per popolare il modal di modifica |
+| `?ajax=edit_checkup` | POST | Salva i dati anagrafici e i campi completi aggiornati via modal |
 | `?ajax=trascrizione` | POST | Salva trascrizione + azzera `analisi_call` nel record |
 | `?ajax=analisi_call` | POST | Genera analisi con Perplexity + salva in `analisi_call` |
 | `?ajax=get_analisi` | POST | Legge `analisi_call` salvata (senza rigenerare) |

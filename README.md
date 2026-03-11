@@ -4,7 +4,7 @@
 > URL di produzione: `aira.reteconnettori.com/checkupsv/`  
 > Database: Supabase — progetto `MigaMATCH AIRA` (`eywxidahsumzrlzwnfev`)
 
----
+----
 
 ## 📋 Panoramica
 

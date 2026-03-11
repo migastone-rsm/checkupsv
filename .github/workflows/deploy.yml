@@ -22,6 +22,6 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           # QUI INDICHI IL PATH SUL TUO SPAZIO WEB
-          server-dir: /public_html/checkupsv  
+          server-dir: /public_html/checkupsv/  
           # QUI INDICHI COSA CARICARE DAL TUO GITHUB (./ carica tutto)
           local-dir: ./

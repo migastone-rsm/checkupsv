@@ -478,6 +478,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'genera_offerta' && $
     }
 
     $payload = [
+        'id'                  => $checkup_id,
         'checkup_id'          => $checkup_id,
         'consulente'          => $operator['nome'] ?? '',
         'includi_app'         => $body['includi_app']         ?? 'NO',

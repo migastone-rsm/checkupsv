@@ -1150,8 +1150,19 @@ if ($record) {
       $pot_ref = (float) ($record['potenziale_referral_dormiente'] ?? 0);
       $pot_pip = (float) ($record['perdita_pipeline_annua'] ?? 0);
       $pot_cos = (float) ($record['costo_inefficienza_annua'] ?? 0);
-      $mat_pct = $mat > 0 ? round($mat / 5 * 100) : 0;
-      $mat_cls = $mat <= 2 ? 'fill-red' : ($mat <= 3 ? 'fill-orange' : 'fill-green');
+      $mat_pct = $mat > 0 ? round($mat / 10 * 100) : 0;
+      $mat_cls = $mat <= 4 ? 'fill-red' : ($mat <= 6 ? 'fill-orange' : 'fill-green');
+
+      // Helper to get labels and meanings
+      function get_mat_info($score) {
+          if ($score <= 2) return ['label' => 'CAOS (Reattivo)', 'desc' => "L'azienda è in balia degli eventi. I processi sono inesistenti, le decisioni sono istintive. L'ansia è massima."];
+          if ($score <= 4) return ['label' => 'GESTITO', 'desc' => 'Primi tentativi di controllo. Esistono processi di base, ma sono inconsistenti, manuali e dipendenti dai singoli.'];
+          if ($score <= 6) return ['label' => 'DEFINITO', 'desc' => "I processi controllano il caos. I flussi sono standardizzati, documentati e digitalizzati. L'imprenditore inizia a delegare."];
+          if ($score <= 8) return ['label' => 'OTTIMIZZATO', 'desc' => 'I processi sono proattivi. L\'azienda usa dati per misurare e migliorare. L\'automazione è strategica.'];
+          return ['label' => 'STRATEGICO', 'desc' => "Il controllo genera lucidità e innovazione. I processi sono in miglioramento continuo. L'autorità di mercato è un asset."];
+      }
+      $mat_info = get_mat_info($mat);
+      $matlab = $mat_info['label'];
       ?>
 
       <!-- SEZ 1 — HEADER REFERTO -->
@@ -1241,10 +1252,37 @@ if ($record) {
         <h2>🏗 Livello di Maturità Commerciale</h2>
         <p class="sezione-desc">Questo indicatore sintetizza il grado di strutturazione del tuo processo commerciale su una scala da 1 a 5. Non misura il fatturato né le dimensioni dell'azienda, ma la solidità del sistema che genera e gestisce le opportunità di vendita: se hai un metodo, se è ripetibile, se funziona anche quando tu non sei presente. Un'azienda con alta maturità commerciale cresce in modo prevedibile; una con bassa maturità dipende da fattori casuali e dalla bravura dei singoli.</p>
         <div style="text-align:center;padding:10px 0 18px">
-          <div class="maturita-num"><?= $mat ?><span style="font-size:32px;color:#aaa">/5</span></div>
+          <div class="maturita-num"><?= $mat ?><span style="font-size:32px;color:#aaa">/10</span></div>
           <div class="maturita-label"><?= $matlab ?></div>
           <div class="progress-bar-wrap">
             <div class="progress-bar-fill <?= $mat_cls ?>" style="width:<?= $mat_pct ?>%"></div>
+          </div>
+        </div>
+
+        <!-- Legenda Livelli -->
+        <div class="legenda-livelli" style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+          <h3 style="font-size: 13px; color: var(--blu); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px;">Significato dei Punteggi</h3>
+          <div style="display: grid; gap: 12px; font-size: 13px;">
+            <?php
+            $livelli = [
+              ['p' => '1-2', 'l' => 'CAOS (Reattivo)', 'd' => "L'azienda è in balia degli eventi. I processi sono inesistenti, le decisioni sono istintive. L'ansia è massima."],
+              ['p' => '3-4', 'l' => 'GESTITO', 'd' => 'Primi tentativi di controllo. Esistono processi di base, ma sono inconsistenti, manuali e dipendenti dai singoli.'],
+              ['p' => '5-6', 'l' => 'DEFINITO', 'd' => "I processi controllano il caos. I flussi sono standardizzati, documentati e digitalizzati. L'imprenditore inizia a delegare."],
+              ['p' => '7-8', 'l' => 'OTTIMIZZATO', 'd' => 'I processi sono proattivi. L\'azienda usa dati per misurare e migliorare. L\'automazione è strategica.'],
+              ['p' => '9-10', 'l' => 'STRATEGICO', 'd' => "Il controllo genera lucidità e innovazione. I processi sono in miglioramento continuo. L'autorità di mercato è un asset."]
+            ];
+            foreach ($livelli as $lvl):
+              $is_active = ($matlab === $lvl['l']);
+              $style = $is_active ? 'background: #fffdf0; border: 1.5px solid var(--giallo);' : 'background: #fdfdfd; border: 1px solid #f0f0f0;';
+            ?>
+              <div style="<?= $style ?> border-radius: 8px; padding: 10px 14px; line-height: 1.5;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                  <strong style="color: var(--blu);"><?= $lvl['l'] ?></strong>
+                  <span style="font-weight: 700; color: #888;"><?= $lvl['p'] ?></span>
+                </div>
+                <div style="color: #666; font-size: 12.5px;"><?= $lvl['d'] ?></div>
+              </div>
+            <?php endforeach; ?>
           </div>
         </div>
       </div>

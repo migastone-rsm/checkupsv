@@ -154,7 +154,7 @@ Flusso automatico al salvataggio trascrizione:
 7.  Cliccando si apre un modal (ora con supporto al rendering Markdown per grassetti e newline) con:
     -   **Analisi discorsiva** basata sul **Metodo Stoico della Prequalifica** (Dicotomia del Controllo), focalizzata sulla crescita del consulente e l'analisi macro delle aree diagnostiche.
     -   **Aree di miglioramento pratiche**, con schemi obbligatori (Cosa è successo / Perché non è ottimale / Come potevi dirlo) e citazioni testuali raggruppate nella Sezione 6.
-    -   **📊 PAGELLA DI PERFORMANCE** basata su 6 criteri: FRAME E INVERSIONE POTERE, RACCOLTA DATI BASE, DIAGNOSI 4 AREE + SISTEMA RD, COSTO DELL'INAZIONE, GESTIONE OBIEZIONI, CHIUSURA E NEXT STEP.
+    -   **📊 PAGELLA DI PERFORMANCE** basata su 6 criteri: FRAME E INVERSIONE POTERE, RACCOLTA DATI BASE, DIAGNOSI 4 AREE + SISTEMA REALTÀ-DESIDERIO, COSTO DELL'INAZIONE, GESTIONE OBIEZIONI, CHIUSURA E NEXT STEP.
     -   Bottone **📋 Copia testo**
 
 Il prompt segue il **Metodo Stoico** e include le istruzioni del file `01_Call Prequalifica 4Aree - ISTRUZIONI.md` + tutti i dati del record Supabase.

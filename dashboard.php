@@ -722,7 +722,7 @@ Il tuo compito e' analizzare la call di prequalifica sulle 4 AREE DIAGNOSTICHE:
 
 FASE 0: CONTROLLO INFORMAZIONI
 Prima di iniziare, verifica se il materiale e' sufficiente. Se mancano informazioni cruciali, elenca le domande specifiche e indica che devono essere inserite nel campo TRASCRIZIONE.
-Se i punteggi Realta' e Desiderio sono tutti uguali (es. 5/5) con Gap = 0 su tutte le aree, significa che il consulente NON ha fatto le domande RD: segnalalo chiaramente e penalizza il voto di 2 punti.
+Se i punteggi Realta' e Desiderio sono tutti uguali (es. 5/5) con Gap = 0 su tutte le aree, significa che il consulente NON ha fatto le domande REALTÀ-DESIDERIO: segnalalo chiaramente e penalizza il voto di 2 punti.
 Se le informazioni sono sufficienti, rivolgiti direttamente al consulente dandogli del "tu" e struttura l'analisi cosi':
 
 ─────────────────────────────────────────────
@@ -802,7 +802,7 @@ FRAME E INVERSIONE POTERE:    __/10
   [motivazione max 15 parole]
 RACCOLTA DATI BASE:           __/10
   [motivazione max 15 parole]
-DIAGNOSI 4 AREE + SISTEMA RD: __/10
+DIAGNOSI 4 AREE + SISTEMA REALTÀ-DESIDERIO: __/10
   [motivazione max 15 parole]
 COSTO DELL'INAZIONE:          __/10
   [motivazione max 15 parole]
@@ -3142,7 +3142,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
     </script>
 
     <footer class="footer-version">
-        AIRA-DXTM v2.1.0 — Pubblicato il 2026-03-13 18:10
+        AIRA-DXTM v2.1.0 — Pubblicato il 2026-03-13 18:32
     </footer>
 
 </body>

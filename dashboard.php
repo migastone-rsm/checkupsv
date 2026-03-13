@@ -1482,16 +1482,11 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             color: #065F46;
         }
 
-        /* ── FOOTER VERSION ── */
-        .footer-version {
-            padding: 20px;
-            text-align: center;
-            font-size: 11px;
-            color: #94A3B8;
-            border-top: 1px solid #F1F5F9;
-            margin-top: auto;
+        .offerta-msg.err {
+            color: #B91C1C;
         }
-    </style>
+
+        /* ── EMPTY STATE ── */
         .empty-state {
             text-align: center;
             padding: 48px 20px;
@@ -3137,10 +3132,6 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             el.className = 'offerta-msg' + (tipo ? ' ' + tipo : '');
         }
     </script>
-
-    <div class="footer-version">
-        AIRA-DXTM SV — v1.2 (Git: aacf7e5 | 2026-03-13 18:00:42)
-    </div>
 
 </body>
 

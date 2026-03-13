@@ -1575,12 +1575,13 @@
       const gapTot = gaps.reduce((s, x) => s + x.gap, 0) / 4;
       const maxGap = gaps.reduce((best, x) => x.gap > best.gap ? x : best, gaps[0]);
       const realitaMedia = (parseInt(getVal('realta_area1')) + parseInt(getVal('realta_area2')) + parseInt(getVal('realta_area3')) + parseInt(getVal('realta_area4'))) / 4;
-      let maturita, mLab;
-      if (realitaMedia <= 2) { maturita = 1; mLab = 'Caotico'; }
-      else if (realitaMedia <= 4) { maturita = 2; mLab = 'Gestito (instabile)'; }
-      else if (realitaMedia <= 6) { maturita = 3; mLab = 'Organizzato'; }
-      else if (realitaMedia <= 8) { maturita = 4; mLab = 'Ottimizzato'; }
-      else { maturita = 5; mLab = 'Eccellente'; }
+      let maturita = Math.round(realitaMedia * 10) / 10;
+      let mLab;
+      if (maturita <= 2) { mLab = 'CAOS (Reattivo)'; }
+      else if (maturita <= 4) { mLab = 'GESTITO'; }
+      else if (maturita <= 6) { mLab = 'DEFINITO'; }
+      else if (maturita <= 8) { mLab = 'OTTIMIZZATO'; }
+      else { mLab = 'STRATEGICO'; }
       const ca = parseFloat(getVal('clienti_attivi')) || 0;
       const ltv = parseFloat(getVal('ltv_annualizzato')) || 0;
       const cf = parseFloat(getVal('conversione_freddo')) || 0;
@@ -1594,7 +1595,7 @@
     <h3>🔍 DIAGNOSI FINALE</h3>
     <div class="diagnosi-row">🩸 Ferita principale: <span>${maxGap.label.toUpperCase()}</span></div>
     <div class="diagnosi-row">📊 Gap totale medio: <span>${gapTot.toFixed(2)} punti</span></div>
-    <div class="diagnosi-row">🏗 Livello maturità: <span>${maturita}/5 — ${mLab}</span></div>
+    <div class="diagnosi-row">🏗 Livello maturità: <span>${maturita}/10 — ${mLab}</span></div>
     ${extraHTML}
   `;
     }
@@ -1636,12 +1637,13 @@
       if (g3 > maxG) { ferita = 'area3_posizionamento'; maxG = g3; }
       if (g4 > maxG) { ferita = 'area4_crm'; maxG = g4; }
       const rMedia = (r1 + r2 + r3 + r4) / 4;
-      let mat, matLab;
-      if (rMedia <= 2) { mat = 1; matLab = 'Caotico'; }
-      else if (rMedia <= 4) { mat = 2; matLab = 'Gestito (instabile)'; }
-      else if (rMedia <= 6) { mat = 3; matLab = 'Organizzato'; }
-      else if (rMedia <= 8) { mat = 4; matLab = 'Ottimizzato'; }
-      else { mat = 5; matLab = 'Eccellente'; }
+      let mat = Math.round(rMedia * 10) / 10;
+      let matLab;
+      if (mat <= 2) { matLab = 'CAOS (Reattivo)'; }
+      else if (mat <= 4) { matLab = 'GESTITO'; }
+      else if (mat <= 6) { matLab = 'DEFINITO'; }
+      else if (mat <= 8) { matLab = 'OTTIMIZZATO'; }
+      else { matLab = 'STRATEGICO'; }
       const ca = parseFloat(getVal('clienti_attivi')) || 0;
       const ltv = parseFloat(getVal('ltv_annualizzato')) || 0;
       const cf = parseFloat(getVal('conversione_freddo')) || 0;
@@ -1769,8 +1771,8 @@
         gap_totale: 3.50,
         ferita_principale: 'area1_relazionale',
         ferita_principale_label: 'Ingegneria Relazionale',
-        livello_maturita: 2,
-        livello_maturita_label: 'Gestito (instabile)',
+        livello_maturita: 4.5,
+        livello_maturita_label: 'DEFINITO',
         potenziale_referral_dormiente: 45000,
         delta_conversione_mensile: 625,
         costo_inefficienza_annua: 19500,

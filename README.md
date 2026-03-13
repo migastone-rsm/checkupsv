@@ -38,7 +38,7 @@ Il sistema comprende 3 componenti principali:
 | `gap_per_area` | JSONB | GAP per area: `{area1_relazionale, area2_automazione, area3_posizionamento, area4_crm}` |
 | `gap_totale` | NUMERIC | Somma totale dei gap |
 | `ferita_principale` / `ferita_principale_label` | TEXT | Area con il gap maggiore |
-| `livello_maturita` | INT (1-5) | Indice di maturità commerciale |
+| `livello_maturita` | FLOAT (1-10) | Indice di maturità commerciale |
 | `livello_maturita_label` | TEXT | Label: Caos / Gestito / Definito / Ottimizzato / Strategico |
 | `risposte_area1..4` | JSONB | Risposte qualitative per ciascuna area |
 | `costo_inefficienza_annua` | NUMERIC | `ore × 52 × costo_orario × venditori` |
@@ -210,7 +210,7 @@ Pagina pubblica (con protezione OTP) che il prospect consulta per leggere la pro
 1. **Header**: nome azienda, data elaborazione, consulente
 2. **Dati Identificativi**: azienda, settore, fatturato, dipendenti, prodotto principale
 3. **Il tuo Consulente**: avatar con iniziali, email, bottoni "📞 Chiama" e "💬 WhatsApp"
-4. **Livello di Maturità Commerciale**: numero grande (1-5/5) + label + progress bar colorata
+4. **Livello di Maturità Commerciale**: numero grande (1-10/10) + label + progress bar colorata
 5. **Potenziale Economico**: 3 box colorati (Capitale Dormiente, Perdita Pipeline, Costo Inefficienza)
 6. **GAP per Area**: barre duali (realtà vs desiderio) + badge rosso sulla "ferita principale" + **Radar chart** (Chart.js)
 7. **Referto AI**: testo AI (sezione "Terapie Prioritarie" rimossa automaticamente via `strip_terapie()`)

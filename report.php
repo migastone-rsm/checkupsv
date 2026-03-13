@@ -1250,7 +1250,7 @@ if ($record) {
       <!-- SEZ 3 — LIVELLO MATURITÀ -->
       <div class="report-box">
         <h2>🏗 Livello di Maturità Commerciale</h2>
-        <p class="sezione-desc">Questo indicatore sintetizza il grado di strutturazione del tuo processo commerciale su una scala da 1 a 5. Non misura il fatturato né le dimensioni dell'azienda, ma la solidità del sistema che genera e gestisce le opportunità di vendita: se hai un metodo, se è ripetibile, se funziona anche quando tu non sei presente. Un'azienda con alta maturità commerciale cresce in modo prevedibile; una con bassa maturità dipende da fattori casuali e dalla bravura dei singoli.</p>
+        <p class="sezione-desc">Questo indicatore sintetizza il grado di strutturazione del tuo processo commerciale su una scala da 1 a 10. Non misura il fatturato né le dimensioni dell'azienda, ma la solidità del sistema che genera e gestisce le opportunità di vendita: se hai un metodo, se è ripetibile, se funziona anche quando tu non sei presente. Un'azienda con alta maturità commerciale cresce in modo prevedibile; una con bassa maturità dipende da fattori casuali e dalla bravura dei singoli.</p>
         <div style="text-align:center;padding:10px 0 18px">
           <div class="maturita-num"><?= $mat ?><span style="font-size:32px;color:#aaa">/10</span></div>
           <div class="maturita-label"><?= $matlab ?></div>
@@ -1553,7 +1553,7 @@ if ($record) {
             <tr><td>Clienti attivi</td><td><?= rn($record['clienti_attivi']) ?></td><td>Database storico</td><td><?= rn($record['database_storico']) ?></td></tr>
             <tr><td>LTV annualizzato</td><td><?= $record['ltv_annualizzato'] ? fmt_eur((float)$record['ltv_annualizzato']) : '<em style="color:#bbb">—</em>' ?></td><td>Venditori interni</td><td><?= rn($record['venditori_interni']) ?></td></tr>
             <tr><td>Conversione lead freddo</td><td><?= rn($record['conversione_freddo'], '%') ?></td><td>Conversione referenziato</td><td><?= rn($record['conversione_referral'], '%') ?></td></tr>
-            <tr><td>Delta conversione mensile</td><td><?= $record['delta_conversione_mensile'] ? fmt_eur((float)$record['delta_conversione_mensile']) : '<em style="color:#bbb">—</em>' ?></td><td>Maturità commerciale</td><td><?= rn($record['livello_maturita']) ?>/5 — <?= rv($record['livello_maturita_label']) ?></td></tr>
+            <tr><td>Delta conversione mensile</td><td><?= $record['delta_conversione_mensile'] ? fmt_eur((float)$record['delta_conversione_mensile']) : '<em style="color:#bbb">—</em>' ?></td><td>Maturità commerciale</td><td><?= rn($record['livello_maturita']) ?>/10 — <?= rv($record['livello_maturita_label']) ?></td></tr>
           </table>
         </div>
 

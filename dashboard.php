@@ -662,7 +662,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'analisi_call' && $_S
     }
     $dati_checkup .= "Gap totale: " . ($rec['gap_totale'] ?? '—') . "\n";
     $dati_checkup .= "Ferita principale: " . ($rec['ferita_principale_label'] ?? '—') . "\n";
-    $dati_checkup .= "Livello maturità: " . ($rec['livello_maturita'] ?? '—') . "/5 — " . ($rec['livello_maturita_label'] ?? '') . "\n";
+    $dati_checkup .= "Livello maturità: " . ($rec['livello_maturita'] ?? '—') . "/10 — " . ($rec['livello_maturita_label'] ?? '') . "\n";
 
     $dati_checkup .= "\n=== RISPOSTE QUALITATIVE ===\n";
     $r1 = is_array($rec['risposte_area1']) ? $rec['risposte_area1'] : (json_decode($rec['risposte_area1'] ?? '{}', true) ?: []);

@@ -1206,9 +1206,17 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             color: #fff;
             border: 1px solid #C2410C;
         }
-
         .btn-offerta:hover {
             background: #C2410C;
+        }
+
+        /* ── FOOTER VERSIONING ── */
+        .footer-version {
+            text-align: center;
+            padding: 20px;
+            font-size: 11px;
+            color: var(--grigio);
+            opacity: 0.7;
         }
 
         /* ── ICONA GOOGLE DOC OFFERTA ── */
@@ -3132,6 +3140,10 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             el.className = 'offerta-msg' + (tipo ? ' ' + tipo : '');
         }
     </script>
+
+    <footer class="footer-version">
+        AIRA-DXTM v2.1.0 — Pubblicato il 2026-03-13 18:10
+    </footer>
 
 </body>
 

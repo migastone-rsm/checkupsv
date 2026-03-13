@@ -17,7 +17,7 @@ if (file_exists(__DIR__ . '/config.php')) {
     define('SENDGRID_KEY', '');
     define('PERPLEXITY_KEY', '');
     define('OTP_PASSPARTOUT', '220783');
-    define('DASH_SECRET', 'sv-dash-2026-migastone'); 
+    define('DASH_SECRET', 'sv-dash-2026-migastone');
 }
 
 // ─── HELPERS ────────────────────────────────────────────
@@ -132,16 +132,17 @@ function fmt_date_it($iso)
 // Valido per l'ora corrente + quella precedente (58 min margine)
 function dash_token(string $id): string
 {
-    $slot = (int)(time() / 3600);
+    $slot = (int) (time() / 3600);
     return substr(hash_hmac('sha256', $id . '|' . $slot, DASH_SECRET), 0, 16);
 }
 
 function verify_dash_token(string $id, string $token): bool
 {
-    $slot = (int)(time() / 3600);
+    $slot = (int) (time() / 3600);
     foreach ([$slot, $slot - 1] as $s) {
         $expected = substr(hash_hmac('sha256', $id . '|' . $s, DASH_SECRET), 0, 16);
-        if (hash_equals($expected, $token)) return true;
+        if (hash_equals($expected, $token))
+            return true;
     }
     return false;
 }
@@ -332,36 +333,42 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'trascrizione' && $_S
 if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_checkup_data' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     header('Content-Type: application/json');
     $rid = preg_replace('/[^a-f0-9\-]/', '', $_GET['id'] ?? '');
-    if (!$rid) { echo json_encode(['ok' => false]); exit; }
+    if (!$rid) {
+        echo json_encode(['ok' => false]);
+        exit;
+    }
     $rows = sb_get('Checkup_SV?id=eq.' . $rid);
     if (!empty($rows)) {
         $row = $rows[0];
 
         // Appiattisce risposte aree (JSONB → chiavi flat con suffisso _risposta)
         $area_map = [
-            'risposte_area1' => ['a1_q1','a1_q2','a1_q3','a1_q4','a1_q5','a1_q6'],
-            'risposte_area2' => ['a2_q1','a2_q2_ore','a2_q2_costo','a2_q3','a2_q4','a2_q5'],
-            'risposte_area3' => ['a3_q1','a3_q2','a3_q3','a3_q4','a3_q5'],
-            'risposte_area4' => ['a4_q1','a4_q2_perc','a4_q2_trattative','a4_q3','a4_q4','a4_q5'],
+            'risposte_area1' => ['a1_q1', 'a1_q2', 'a1_q3', 'a1_q4', 'a1_q5', 'a1_q6'],
+            'risposte_area2' => ['a2_q1', 'a2_q2_ore', 'a2_q2_costo', 'a2_q3', 'a2_q4', 'a2_q5'],
+            'risposte_area3' => ['a3_q1', 'a3_q2', 'a3_q3', 'a3_q4', 'a3_q5'],
+            'risposte_area4' => ['a4_q1', 'a4_q2_perc', 'a4_q2_trattative', 'a4_q3', 'a4_q4', 'a4_q5'],
         ];
         foreach ($area_map as $col => $keys) {
             $jsonb = $row[$col] ?? [];
-            if (is_string($jsonb)) $jsonb = json_decode($jsonb, true) ?? [];
+            if (is_string($jsonb))
+                $jsonb = json_decode($jsonb, true) ?? [];
             foreach ($keys as $k) {
-                $is_num = in_array($k, ['a2_q2_ore','a2_q2_costo','a4_q2_perc','a4_q2_trattative']);
+                $is_num = in_array($k, ['a2_q2_ore', 'a2_q2_costo', 'a4_q2_perc', 'a4_q2_trattative']);
                 $flat_key = $is_num ? $k : $k . '_risposta';
                 $row[$flat_key] = $jsonb[$k] ?? '';
             }
         }
 
         // Appiattisce punteggi_realta e punteggi_desiderio → realta_areaN, desiderio_areaN
-        $aree_keys = ['area1_relazionale','area2_automazione','area3_posizionamento','area4_crm'];
+        $aree_keys = ['area1_relazionale', 'area2_automazione', 'area3_posizionamento', 'area4_crm'];
         $pr = $row['punteggi_realta'] ?? [];
         $pd = $row['punteggi_desiderio'] ?? [];
-        if (is_string($pr)) $pr = json_decode($pr, true) ?? [];
-        if (is_string($pd)) $pd = json_decode($pd, true) ?? [];
+        if (is_string($pr))
+            $pr = json_decode($pr, true) ?? [];
+        if (is_string($pd))
+            $pd = json_decode($pd, true) ?? [];
         foreach ($aree_keys as $ak) {
-            $row['realta_' . $ak]    = $pr[$ak] ?? '';
+            $row['realta_' . $ak] = $pr[$ak] ?? '';
             $row['desiderio_' . $ak] = $pd[$ak] ?? '';
         }
 
@@ -377,65 +384,81 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'edit_checkup' && $_S
     header('Content-Type: application/json');
     $body = json_decode(file_get_contents('php://input'), true);
     $rid = preg_replace('/[^a-f0-9\-]/', '', $body['id'] ?? '');
-    
+
     if (!$rid) {
         echo json_encode(['ok' => false, 'msg' => 'ID mancante.']);
         exit;
     }
-    
+
     $patch_data = [];
 
     // Campi scalari diretti
-    $scalar_fields = ['cliente_nome','cliente_azienda','cliente_email','cliente_cellulare','cliente_sito_web','cliente_partita_iva','cliente_settore','cliente_fatturato','cliente_dipendenti'];
+    $scalar_fields = ['cliente_nome', 'cliente_azienda', 'cliente_email', 'cliente_cellulare', 'cliente_sito_web', 'cliente_partita_iva', 'cliente_settore', 'cliente_fatturato', 'cliente_dipendenti'];
     foreach ($scalar_fields as $f) {
-        if (array_key_exists($f, $body)) $patch_data[$f] = $body[$f];
+        if (array_key_exists($f, $body))
+            $patch_data[$f] = $body[$f];
     }
 
     // Riassembla risposte_area1
     $a1 = [];
-    foreach (['a1_q1','a1_q2','a1_q3','a1_q4','a1_q5','a1_q6'] as $k) {
-        if (array_key_exists($k . '_risposta', $body)) $a1[$k] = $body[$k . '_risposta'];
+    foreach (['a1_q1', 'a1_q2', 'a1_q3', 'a1_q4', 'a1_q5', 'a1_q6'] as $k) {
+        if (array_key_exists($k . '_risposta', $body))
+            $a1[$k] = $body[$k . '_risposta'];
     }
-    if (!empty($a1)) $patch_data['risposte_area1'] = $a1;
+    if (!empty($a1))
+        $patch_data['risposte_area1'] = $a1;
 
     // Riassembla risposte_area2
     $a2 = [];
-    foreach (['a2_q1','a2_q3','a2_q4','a2_q5'] as $k) {
-        if (array_key_exists($k . '_risposta', $body)) $a2[$k] = $body[$k . '_risposta'];
+    foreach (['a2_q1', 'a2_q3', 'a2_q4', 'a2_q5'] as $k) {
+        if (array_key_exists($k . '_risposta', $body))
+            $a2[$k] = $body[$k . '_risposta'];
     }
-    foreach (['a2_q2_ore','a2_q2_costo'] as $k) {
-        if (array_key_exists($k, $body)) $a2[$k] = is_numeric($body[$k]) ? (float)$body[$k] : $body[$k];
+    foreach (['a2_q2_ore', 'a2_q2_costo'] as $k) {
+        if (array_key_exists($k, $body))
+            $a2[$k] = is_numeric($body[$k]) ? (float) $body[$k] : $body[$k];
     }
-    if (!empty($a2)) $patch_data['risposte_area2'] = $a2;
+    if (!empty($a2))
+        $patch_data['risposte_area2'] = $a2;
 
     // Riassembla risposte_area3
     $a3 = [];
-    foreach (['a3_q1','a3_q2','a3_q3','a3_q4','a3_q5'] as $k) {
-        if (array_key_exists($k . '_risposta', $body)) $a3[$k] = $body[$k . '_risposta'];
+    foreach (['a3_q1', 'a3_q2', 'a3_q3', 'a3_q4', 'a3_q5'] as $k) {
+        if (array_key_exists($k . '_risposta', $body))
+            $a3[$k] = $body[$k . '_risposta'];
     }
-    if (!empty($a3)) $patch_data['risposte_area3'] = $a3;
+    if (!empty($a3))
+        $patch_data['risposte_area3'] = $a3;
 
     // Riassembla risposte_area4
     $a4 = [];
-    foreach (['a4_q1','a4_q3','a4_q4','a4_q5'] as $k) {
-        if (array_key_exists($k . '_risposta', $body)) $a4[$k] = $body[$k . '_risposta'];
+    foreach (['a4_q1', 'a4_q3', 'a4_q4', 'a4_q5'] as $k) {
+        if (array_key_exists($k . '_risposta', $body))
+            $a4[$k] = $body[$k . '_risposta'];
     }
-    foreach (['a4_q2_perc','a4_q2_trattative'] as $k) {
-        if (array_key_exists($k, $body)) $a4[$k] = is_numeric($body[$k]) ? (float)$body[$k] : $body[$k];
+    foreach (['a4_q2_perc', 'a4_q2_trattative'] as $k) {
+        if (array_key_exists($k, $body))
+            $a4[$k] = is_numeric($body[$k]) ? (float) $body[$k] : $body[$k];
     }
-    if (!empty($a4)) $patch_data['risposte_area4'] = $a4;
+    if (!empty($a4))
+        $patch_data['risposte_area4'] = $a4;
 
     // Riassembla punteggi_realta
-    $aree_keys = ['area1_relazionale','area2_automazione','area3_posizionamento','area4_crm'];
-    $pr = []; $pd = [];
+    $aree_keys = ['area1_relazionale', 'area2_automazione', 'area3_posizionamento', 'area4_crm'];
+    $pr = [];
+    $pd = [];
     foreach ($aree_keys as $ak) {
         $rk = 'realta_' . $ak;
         $dk = 'desiderio_' . $ak;
-        if (array_key_exists($rk, $body) && $body[$rk] !== '') $pr[$ak] = (int)$body[$rk];
-        if (array_key_exists($dk, $body) && $body[$dk] !== '') $pd[$ak] = (int)$body[$dk];
+        if (array_key_exists($rk, $body) && $body[$rk] !== '')
+            $pr[$ak] = (int) $body[$rk];
+        if (array_key_exists($dk, $body) && $body[$dk] !== '')
+            $pd[$ak] = (int) $body[$dk];
     }
-    if (!empty($pr)) $patch_data['punteggi_realta']   = $pr;
-    if (!empty($pd)) $patch_data['punteggi_desiderio'] = $pd;
+    if (!empty($pr))
+        $patch_data['punteggi_realta'] = $pr;
+    if (!empty($pd))
+        $patch_data['punteggi_desiderio'] = $pd;
 
     if (empty($patch_data)) {
         echo json_encode(['ok' => false, 'msg' => 'Nessun campo da aggiornare.']);
@@ -455,13 +478,16 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'edit_checkup' && $_S
 if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'poll_offerta' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     header('Content-Type: application/json');
     $rid = preg_replace('/[^a-f0-9\-]/', '', $_GET['id'] ?? '');
-    if (!$rid) { echo json_encode(['in_elaborazione' => false, 'doc_url' => null]); exit; }
+    if (!$rid) {
+        echo json_encode(['in_elaborazione' => false, 'doc_url' => null]);
+        exit;
+    }
 
     $rows = sb_get('Checkup_SV?id=eq.' . $rid . '&select=offerta_doc_url,offerta_in_elaborazione');
-    $row  = $rows[0] ?? [];
+    $row = $rows[0] ?? [];
     echo json_encode([
-        'in_elaborazione' => (bool)($row['offerta_in_elaborazione'] ?? false),
-        'doc_url'         => $row['offerta_doc_url'] ?? null,
+        'in_elaborazione' => (bool) ($row['offerta_in_elaborazione'] ?? false),
+        'doc_url' => $row['offerta_doc_url'] ?? null,
     ]);
     exit;
 }
@@ -478,30 +504,30 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'genera_offerta' && $
     }
 
     $payload = [
-        'id'                  => $checkup_id,
-        'checkup_id'          => $checkup_id,
-        'consulente'          => $operator['nome'] ?? '',
-        'includi_app'         => $body['includi_app']         ?? 'NO',
-        'includi_app_pro'     => $body['includi_app_pro']     ?? 'NO',
-        'includi_scouting'    => $body['includi_scouting']    ?? 'NO',
+        'id' => $checkup_id,
+        'checkup_id' => $checkup_id,
+        'consulente' => $operator['nome'] ?? '',
+        'includi_app' => $body['includi_app'] ?? 'NO',
+        'includi_app_pro' => $body['includi_app_pro'] ?? 'NO',
+        'includi_scouting' => $body['includi_scouting'] ?? 'NO',
         'includi_automazione' => $body['includi_automazione'] ?? 'NO',
-        'includi_migacrm'     => $body['includi_migacrm']     ?? 'NO',
-        'includi_enterprise'  => $body['includi_enterprise']  ?? 'NO',
-        'importo_app'         => (float)($body['importo_app']         ?? 0),
-        'importo_app_pro'     => (float)($body['importo_app_pro']     ?? 0),
-        'importo_scouting'    => (float)($body['importo_scouting']    ?? 0),
-        'importo_automazione' => (float)($body['importo_automazione'] ?? 0),
-        'importo_migacrm'     => (float)($body['importo_migacrm']     ?? 0),
-        'importo_enterprise'  => (float)($body['importo_enterprise']  ?? 0),
-        'desc_automazione'    => substr(strip_tags($body['desc_automazione'] ?? ''), 0, 500),
-        'totale'              => (float)($body['totale'] ?? 0),
+        'includi_migacrm' => $body['includi_migacrm'] ?? 'NO',
+        'includi_enterprise' => $body['includi_enterprise'] ?? 'NO',
+        'importo_app' => (float) ($body['importo_app'] ?? 0),
+        'importo_app_pro' => (float) ($body['importo_app_pro'] ?? 0),
+        'importo_scouting' => (float) ($body['importo_scouting'] ?? 0),
+        'importo_automazione' => (float) ($body['importo_automazione'] ?? 0),
+        'importo_migacrm' => (float) ($body['importo_migacrm'] ?? 0),
+        'importo_enterprise' => (float) ($body['importo_enterprise'] ?? 0),
+        'desc_automazione' => substr(strip_tags($body['desc_automazione'] ?? ''), 0, 500),
+        'totale' => (float) ($body['totale'] ?? 0),
     ];
 
     // Segna in Supabase che l'offerta è in elaborazione (resetta url precedente)
     sb_patch('Checkup_SV?id=eq.' . $checkup_id, [
         'offerta_in_elaborazione' => true,
-        'offerta_doc_url'         => null,
-        'offerta_generata_at'     => null,
+        'offerta_doc_url' => null,
+        'offerta_generata_at' => null,
     ]);
 
     // Webhook N8n (da configurare in config.php quando il workflow è pronto)
@@ -520,16 +546,16 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'genera_offerta' && $
     $ch = curl_init($webhook_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode($payload),
-        CURLOPT_TIMEOUT        => 60,
-        CURLOPT_HTTPHEADER     => [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_TIMEOUT => 60,
+        CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'Accept: application/json',
         ],
     ]);
     $response = curl_exec($ch);
-    $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err_curl = curl_error($ch);
     curl_close($ch);
 
@@ -548,7 +574,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'genera_offerta' && $
     } else {
         echo json_encode([
             'success' => false,
-            'error'   => $resp_data['error'] ?? 'Errore generazione (HTTP ' . $code . ')',
+            'error' => $resp_data['error'] ?? 'Errore generazione (HTTP ' . $code . ')',
         ]);
     }
     exit;
@@ -686,52 +712,84 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'analisi_call' && $_S
 
     // ─── Prompt finale ────────────────────────────────────
     $system_prompt = <<<'PROMPT'
-Agisci come un Coach di vendita B2B di altissimo livello, esperto in trattative commerciali, negoziazione e motivazione dei team di vendita. Il tuo approccio segue il "Metodo Stoico": analizzi con freddezza e oggettivita', basi ogni valutazione sui dati concreti e hai come obiettivo primario FAR CRESCERE il consulente — valorizzando ogni suo successo e guidandolo con precisione chirurgica sulle aree di miglioramento.
-Il tuo compito e' analizzare la trascrizione della call e i dati del checkup forniti, insieme alle istruzioni della call di prequalifica.
+Agisci come un Coach di vendita B2B specializzato nel "Metodo Stoico della Prequalifica". Il tuo framework si basa sulla DICOTOMIA DEL CONTROLLO: spostare il focus del prospect da cio' che subisce (il caos esterno) a cio' che controlla (le leve interne). Hai come obiettivo primario FAR CRESCERE il consulente — valorizzando ogni suo successo e guidandolo con precisione chirurgica sulle aree di miglioramento.
 
-FASE 0: CONTROLLO INFORMAZIONI — Prima di iniziare l'analisi, verifica se il materiale e' sufficiente. Se mancano informazioni cruciali o passaggi chiave della trattativa, elenca le domande specifiche e indica che queste informazioni devono essere inserite nel campo TRASCRIZIONE. Attendi le risposte prima di procedere.
+Il tuo compito e' analizzare la call di prequalifica sulle 4 AREE DIAGNOSTICHE:
+- Area 1: Ingegneria Relazionale (capitale referral dormiente)
+- Area 2: Automazione e Processi (tempo bruciato in attivita' manuali)
+- Area 3: Posizionamento e Marketing (guerra dei prezzi vs autorita')
+- Area 4: CRM e Gestione Pipeline (fragilita' commerciale)
 
-Se le informazioni sono sufficienti, rivolgiti direttamente al consulente dandogli del "tu" e struttura la tua analisi RIGOROSAMENTE in questo ordine:
+FASE 0: CONTROLLO INFORMAZIONI
+Prima di iniziare, verifica se il materiale e' sufficiente. Se mancano informazioni cruciali, elenca le domande specifiche e indica che devono essere inserite nel campo TRASCRIZIONE.
+Se i punteggi Realta' e Desiderio sono tutti uguali (es. 5/5) con Gap = 0 su tutte le aree, significa che il consulente NON ha fatto le domande RD: segnalalo chiaramente e penalizza il voto di 2 punti.
+Se le informazioni sono sufficienti, rivolgiti direttamente al consulente dandogli del "tu" e struttura l'analisi cosi':
 
 ─────────────────────────────────────────────
 1. PUNTI DI FORZA — CIO' CHE HAI FATTO BENE
 ─────────────────────────────────────────────
-Questa e' la sezione piu' importante e valorizzante. Celebra le cose positive che il consulente ha fatto. Sii generoso e motivante. Spiega PERCHE' le scelte sono state efficaci e quale impatto hanno avuto sul cliente connettendo il comportamento al metodo corretto.
-IMPORTANTE: In questa sezione (e nelle sezioni 2, 3, 4 e 6) NON citare esempi specifici dalla trascrizione. Mantieni un livello di analisi macro e discorsivo.
+Questa e' la sezione piu' importante e valorizzante. Celebra le cose positive che il consulente ha fatto. Sii generoso e motivante. Spiega PERCHE' le scelte sono state efficaci e quale impatto hanno avuto sul prospect, connettendo il comportamento al metodo corretto.
+IMPORTANTE: In questa sezione (e nelle sezioni 2, 3, 4, 5) NON citare esempi specifici dalla trascrizione. Mantieni un livello di analisi macro e discorsivo.
 
 ─────────────────────────────────────────────
-2. ANALISI DELL'EMORRAGIA E DEL VALORE
+2. FRAME DI APERTURA E INVERSIONE DEL POTERE
 ─────────────────────────────────────────────
-Valuta se e come il consulente ha spostato la discussione dal "costo del servizio" al "fatturato perso ogni giorno di inazione". Ha usato i KPI raccolti (LTV, conversioni, pipeline, inefficienze) per costruire il calcolo matematico dell'emorragia? Il cliente ha percepito con chiarezza il costo dell'inazione? (Ricorda: Niente esempi esatti dalla trascrizione qui).
+Valuta se il consulente ha applicato correttamente:
+- L'INVERSIONE DEL POTERE: "Non stiamo vendendo, stiamo valutando se l'azienda merita l'accesso alla nostra rete"
+- La SCARSITA': "Non tutti vengono accettati. I nostri professionisti ci mettono la faccia."
+- Il POSIZIONAMENTO: "Rappresentiamo 2.000 professionisti che rischiano la propria reputazione"
+Ha chiesto il "tu"? Ha impostato la call come valutazione, non come vendita? Il prospect ha sentito che c'e' qualcosa da guadagnare o perdere?
 
 ─────────────────────────────────────────────
-3. GESTIONE DELLA PROPOSTA E DIAGNOSI
+3. RACCOLTA DATI BASE E DIAGNOSI 4 AREE
 ─────────────────────────────────────────────
-Come e' stata presentata l'offerta? E' stata mostrata live come "analisi dei gap aziendali" oppure inviata in anticipo bruciando la leva emotiva? L'approccio era consulenziale e diagnostico o sembrava un preventivo? 
+Valuta la completezza dei dati raccolti nel BLOCCO 0:
+- Dati aziendali (settore, fatturato, dipendenti, venditori interni)
+- KPI critici (LTV annualizzato, % conversione freddo vs referenziato, clienti attivi, database storico)
+Ha usato il tono corretto? ("Dammi un ordine di grandezza, non serve la precisione assoluta")
+
+Per OGNI delle 4 AREE valuta:
+a) Ha fatto le DOMANDE DIAGNOSTICHE corrette per far emergere il "sintomo" (l'ansia)?
+b) Ha raccolto il punteggio REALTA'? ("Da 1 a 10, com'e' la situazione attuale?")
+c) Ha raccolto il punteggio DESIDERIO? ("Da 1 a 10, quanto e' importante sistemarla?")
+d) Ha fatto emergere il GAP come "ferita" strategica?
+e) Ha applicato l'ANALISI STOICA facendo capire cosa e' SOTTO IL CONTROLLO del prospect?
 
 ─────────────────────────────────────────────
-4. GESTIONE DELL'URGENZA E LEVE FINALI
+4. COSTO DELL'INAZIONE E TRADUZIONE IN EURO
 ─────────────────────────────────────────────
-Analizza le battute finali della call. Il consulente ha applicato la leva dell'urgenza (massimo 3 giorni per decidere)? Ha usato bonus reali? Ha proposto un contatto con un segnalatore specifico per testare la reale intenzione del cliente? 
+Ha trasformato i "sintomi" in costi economici concreti? Ha quantificato il COSTO DELL'INAZIONE?
+- Potenziale referral dormiente (clienti soddisfatti x 15% x LTV)
+- Delta conversione (% referral - % freddo) x lead mensili x LTV
+- Ore perse in attivita' manuali x costo orario = euro bruciati
+- Trattative perse per mancato follow-up
+
+Il prospect ha VERBALIZZATO il proprio dolore? (Il consulente deve far parlare il prospect, non parlare lui. Rispettare i silenzi.)
 
 ─────────────────────────────────────────────
-5. AREE DI MIGLIORAMENTO CON ESEMPI PRATICI
+5. CHIUSURA E NEXT STEP
 ─────────────────────────────────────────────
-Questa è l'UNICA SEZIONE in cui d'ora in poi DOVRAI FARE ESEMPI SPECIFICI presi testualmente dalla trascrizione. 
+Valuta la fase finale:
+- Ha RISPECCHIATO il dolore usando le parole esatte del prospect? ("Dimmi se riconosci questo quadro...")
+- Ha fatto calcolare il COSTO DELL'INAZIONE al prospect stesso? ("Se dovessi stimare quanto ti costa ogni mese...")
+- Ha fatto la DOMANDA VISIONE? ("Se risolvessimo questi problemi in 90 giorni, cosa cambierebbe?")
+- Ha fissato un NEXT STEP con DATA PRECISA? (Mai "ci sentiamo presto" = non ci sentiamo piu')
+- NON ha parlato di prezzi? (Parlare di prezzi prima che il dolore emerga brucia l'interesse)
+- Ha spiegato cosa succedera' nella prossima call? (Referto diagnostico, soluzioni personalizzate, valutazione se ci sono i presupposti per un percorso insieme)
+
+─────────────────────────────────────────────
+6. AREE DI MIGLIORAMENTO CON ESEMPI PRATICI
+─────────────────────────────────────────────
+QUESTA E' L'UNICA SEZIONE CON CITAZIONI TESTUALI dalla trascrizione.
 
 Inizia con un paragrafo generale che spiega dove il consulente deve migliorare in modo prioritario.
-Successivamente, per ogni aspetto da migliorare (es. Gestione Obiezioni, Chiusura, ecc.), fai sempre un paio di esempi pratici usando ESATTAMENTE questo schema obbligatorio:
+Per ogni aspetto da migliorare, usa ESATTAMENTE questo schema:
 
-COSA E' SUCCESSO: "[citazione testuale ed esatta dalla trascrizione]"
-PERCHE' NON E' OTTIMALE: [spiegazione del perche' quella risposta o comportamento ha indebolito la trattativa]
-COME POTEVI DIRLO: "[riformulazione ideale — le parole esatte che il consulente avrebbe dovuto usare in quel momento]"
+COSA E' SUCCESSO: "[citazione esatta dalla trascrizione]"
+PERCHE' NON E' OTTIMALE: [spiegazione di come ha indebolito la trattativa]
+COME POTEVI DIRLO: "[riformulazione ideale — le parole esatte che avresti dovuto usare]"
 
 Non inventare situazioni: cita solo passaggi realmente presenti nella trascrizione.
-
-─────────────────────────────────────────────
-6. GESTIONE DEL TEMPO
-─────────────────────────────────────────────
-Analizza il ritmo e la durata della call. L'obiettivo e' 30 minuti. Dove si e' perso tempo? Dove si poteva accelerare senza perdere qualita'? Dai consigli pratici (senza esempi diretti dalla trascrizione).
 
 ─────────────────────────────────────────────
 7. PAGELLA DI PERFORMANCE FINALE
@@ -740,30 +798,31 @@ Concludi con la pagella riassuntiva. Usa ESATTAMENTE questo formato:
 
 PAGELLA DI PERFORMANCE
 ━━━━━━━━━━━━━━━━━━━━━━━━
-FRAME DI APERTURA:         __/10
-  [motivazione sintetica max 15 parole]
-RACCOLTA DEI DATI:         __/10
-  [motivazione sintetica max 15 parole]
-ANALISI EMORRAGIA/DOLORE:  __/10
-  [motivazione sintetica max 15 parole]
-GESTIONE PROPOSTA:         __/10
-  [motivazione sintetica max 15 parole]
-GESTIONE OBIEZIONI:        __/10
-  [motivazione sintetica max 15 parole]
-GESTIONE TEMPO:            __/10
-  [motivazione sintetica max 15 parole]
+FRAME E INVERSIONE POTERE:    __/10
+  [motivazione max 15 parole]
+RACCOLTA DATI BASE:           __/10
+  [motivazione max 15 parole]
+DIAGNOSI 4 AREE + SISTEMA RD: __/10
+  [motivazione max 15 parole]
+COSTO DELL'INAZIONE:          __/10
+  [motivazione max 15 parole]
+GESTIONE OBIEZIONI:           __/10
+  [motivazione max 15 parole]
+CHIUSURA E NEXT STEP:         __/10
+  [motivazione max 15 parole]
 ━━━━━━━━━━━━━━━━━━━━━━━━
-VOTO GENERALE:             __/10
+VOTO GENERALE:                __/10
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
 ─────────────────────────────────────────────
 REGOLE ASSOLUTE DI FORMATO:
 ─────────────────────────────────────────────
-- Il rapporto puo' essere lungo fino a 1000 parole, ma anche piu' breve se non e' necessario essere cosi' estesi. L'importante e' che sia qualitativamente perfetto.
+- Il rapporto puo' essere lungo fino a 1000 parole, ma anche piu' breve se sufficiente. L'importante e' che sia qualitativamente perfetto.
 - Scrivi in modo discorsivo e narrativo: le sezioni devono avere paragrafi argomentativi.
-- Gli unici virgolettati testuali estratti dalla trascrizione DEVONO essere raggruppati SOLO ed ESCLUSIVAMENTE nella sezione "5. AREE DI MIGLIORAMENTO CON ESEMPI PRATICI". Nelle altre sezioni l'analisi deve essere di alto livello.
+- Gli unici virgolettati testuali estratti dalla trascrizione DEVONO essere raggruppati SOLO nella sezione "6. AREE DI MIGLIORAMENTO CON ESEMPI PRATICI".
 - Il tono finale deve essere costruttivo, motivante e orientato alla crescita.
 - Usa il "tu" diretto con il consulente.
+- Valorizza SEMPRE prima i punti di forza (sezione 1) prima di passare alle aree di miglioramento.
 PROMPT;
 
 
@@ -807,11 +866,11 @@ PROMPT;
         exit;
     }
     $analisi = $data['choices'][0]['message']['content'];
-    
+
     // Estrazione del voto (es. VOTO GENERALE: 8/10)
     $voto = null;
     if (preg_match('/VOTO GENERALE:\s*\*?(\d+(?:\.\d+)?)\s*\/\s*10/i', $analisi, $matches)) {
-        $voto = (float)$matches[1];
+        $voto = (float) $matches[1];
     }
 
     // ─── Salva analisi nel DB per non doverla rigenerare ──
@@ -820,7 +879,7 @@ PROMPT;
         $update_data['analisi_voto'] = $voto;
     }
     sb_patch('Checkup_SV?id=eq.' . $rid, $update_data);
-    
+
     echo json_encode(['ok' => true, 'analisi' => $analisi, 'voto' => $voto]);
     exit;
 }
@@ -1192,8 +1251,15 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
         }
 
         @keyframes pulse-grey {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: .45; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .45;
+            }
         }
 
         /* ── MODAL OFFERTA ── */
@@ -1201,7 +1267,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,.55);
+            background: rgba(0, 0, 0, .55);
             z-index: 600;
             align-items: center;
             justify-content: center;
@@ -1219,7 +1285,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             max-width: 620px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 24px 64px rgba(0,0,0,.3);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, .3);
             display: flex;
             flex-direction: column;
         }
@@ -1243,14 +1309,16 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
         .modal-offerta-close {
             background: none;
             border: none;
-            color: rgba(255,255,255,.75);
+            color: rgba(255, 255, 255, .75);
             font-size: 24px;
             cursor: pointer;
             line-height: 1;
             padding: 0 4px;
         }
 
-        .modal-offerta-close:hover { color: #fff; }
+        .modal-offerta-close:hover {
+            color: #fff;
+        }
 
         .modal-offerta-body {
             padding: 22px;
@@ -1272,7 +1340,9 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             border-bottom: 1px solid #F3F4F6;
         }
 
-        .offerta-row:last-child { border-bottom: none; }
+        .offerta-row:last-child {
+            border-bottom: none;
+        }
 
         .offerta-checkbox {
             width: 20px;
@@ -1304,7 +1374,9 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             padding: 8px 0 4px;
         }
 
-        .offerta-desc-row.visible { display: block; }
+        .offerta-desc-row.visible {
+            display: block;
+        }
 
         .offerta-desc-input {
             width: 100%;
@@ -1320,7 +1392,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
         .offerta-desc-input:focus {
             outline: none;
             border-color: #EA580C;
-            box-shadow: 0 0 0 2px rgba(234,88,12,.12);
+            box-shadow: 0 0 0 2px rgba(234, 88, 12, .12);
         }
 
         .offerta-importo {
@@ -1391,8 +1463,14 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             transition: opacity .15s;
         }
 
-        .btn-genera-offerta:hover { opacity: .88; }
-        .btn-genera-offerta:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-genera-offerta:hover {
+            opacity: .88;
+        }
+
+        .btn-genera-offerta:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
 
         .offerta-msg {
             font-size: 13px;
@@ -1400,8 +1478,13 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             margin-left: auto;
         }
 
-        .offerta-msg.ok { color: #065F46; }
-        .offerta-msg.err { color: #B91C1C; }
+        .offerta-msg.ok {
+            color: #065F46;
+        }
+
+        .offerta-msg.err {
+            color: #B91C1C;
+        }
 
         /* ── EMPTY STATE ── */
         .empty-state {
@@ -1863,7 +1946,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                                     📄 Report
                                                 </a>
                                                 <button class="btn-action" style="padding:6px; background:#F1F5F9; color:#475569;"
-                                                    onclick="openEditCheckup('<?= htmlspecialchars($rid, ENT_QUOTES) ?>')" title="Modifica dati">✏️</button>
+                                                    onclick="openEditCheckup('<?= htmlspecialchars($rid, ENT_QUOTES) ?>')"
+                                                    title="Modifica dati">✏️</button>
                                             </div>
                                         </td>
                                         <!-- Trascrizione -->
@@ -1878,22 +1962,21 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                         <!-- Analisi Call -->
                                         <td>
                                             <?php
-                                                $has_analisi = !empty(trim($row['analisi_call'] ?? ''));
-                                                $analisi_esc = $has_analisi ? htmlspecialchars(base64_encode($row['analisi_call']), ENT_QUOTES) : '';
-                                                
-                                                // Estrazione voto per fallback o uso DB
-                                                $voto_txt = '';
-                                                if ($has_analisi) {
-                                                    if (!empty($row['analisi_voto'])) {
-                                                        $voto_txt = ' ' . floatval($row['analisi_voto']) . '/10';
-                                                    } else if (preg_match('/VOTO GENERALE:\s*\*?(\d+(?:\.\d+)?)\s*\/\s*10/i', $row['analisi_call'], $m)) {
-                                                        $voto_txt = ' ' . floatval($m[1]) . '/10';
-                                                    }
+                                            $has_analisi = !empty(trim($row['analisi_call'] ?? ''));
+                                            $analisi_esc = $has_analisi ? htmlspecialchars(base64_encode($row['analisi_call']), ENT_QUOTES) : '';
+
+                                            // Estrazione voto per fallback o uso DB
+                                            $voto_txt = '';
+                                            if ($has_analisi) {
+                                                if (!empty($row['analisi_voto'])) {
+                                                    $voto_txt = ' ' . floatval($row['analisi_voto']) . '/10';
+                                                } else if (preg_match('/VOTO GENERALE:\s*\*?(\d+(?:\.\d+)?)\s*\/\s*10/i', $row['analisi_call'], $m)) {
+                                                    $voto_txt = ' ' . floatval($m[1]) . '/10';
                                                 }
+                                            }
                                             ?>
                                             <button class="btn-action <?= $has_analisi ? 'btn-analisi' : 'btn-analisi-empty' ?>"
-                                                data-id="<?= htmlspecialchars($rid, ENT_QUOTES) ?>"
-                                                data-b64="<?= $analisi_esc ?>"
+                                                data-id="<?= htmlspecialchars($rid, ENT_QUOTES) ?>" data-b64="<?= $analisi_esc ?>"
                                                 onclick="openAnalisiCall('<?= htmlspecialchars($rid, ENT_QUOTES) ?>','<?= $az_esc ?>',this)"
                                                 <?= $has_analisi ? '' : 'title="Salva prima la trascrizione per generare l\'analisi"' ?>>
                                                 <?= $has_analisi ? '🎯 Analisi' . htmlspecialchars($voto_txt) : '🔒 Analisi' ?>
@@ -1934,25 +2017,22 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                                     📋 Offerta
                                                 </button>
                                                 <?php
-                                                $in_elab  = !empty($row['offerta_in_elaborazione']);
-                                                $doc_url  = $row['offerta_doc_url'] ?? '';
+                                                $in_elab = !empty($row['offerta_in_elaborazione']);
+                                                $doc_url = $row['offerta_doc_url'] ?? '';
                                                 if ($in_elab || $doc_url):
-                                                ?>
-                                                <?php if ($doc_url && !$in_elab): ?>
-                                                    <a class="gdoc-icon ready"
-                                                       href="<?= htmlspecialchars($doc_url, ENT_QUOTES) ?>"
-                                                       target="_blank"
-                                                       title="Apri offerta Google Doc"
-                                                       id="gdoc-<?= htmlspecialchars($rid, ENT_QUOTES) ?>">
-                                                        📄
-                                                    </a>
-                                                <?php else: ?>
-                                                    <span class="gdoc-icon pending"
-                                                          id="gdoc-<?= htmlspecialchars($rid, ENT_QUOTES) ?>"
-                                                          title="Offerta in elaborazione...">
-                                                        📄
-                                                    </span>
-                                                <?php endif; ?>
+                                                    ?>
+                                                    <?php if ($doc_url && !$in_elab): ?>
+                                                        <a class="gdoc-icon ready" href="<?= htmlspecialchars($doc_url, ENT_QUOTES) ?>"
+                                                            target="_blank" title="Apri offerta Google Doc"
+                                                            id="gdoc-<?= htmlspecialchars($rid, ENT_QUOTES) ?>">
+                                                            📄
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <span class="gdoc-icon pending" id="gdoc-<?= htmlspecialchars($rid, ENT_QUOTES) ?>"
+                                                            title="Offerta in elaborazione...">
+                                                            📄
+                                                        </span>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
@@ -1985,16 +2065,22 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                     <textarea id="modal-trascr-text" placeholder="Incolla qui la trascrizione della chiamata..."></textarea>
                     <!-- Progress bar generazione analisi (nascosta di default) -->
                     <div id="trascr-progress" style="display:none;margin-top:16px;">
-                        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;" id="trascr-progress-label">⏳ Salvataggio...</div>
+                        <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:10px;"
+                            id="trascr-progress-label">⏳ Salvataggio...</div>
                         <div style="background:#E5E7EB;border-radius:999px;height:8px;overflow:hidden;">
-                            <div id="trascr-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#0891B2,#6366F1);border-radius:999px;transition:width 0.5s ease;"></div>
+                            <div id="trascr-progress-bar"
+                                style="height:100%;width:0%;background:linear-gradient(90deg,#0891B2,#6366F1);border-radius:999px;transition:width 0.5s ease;">
+                            </div>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#9CA3AF;">
+                        <div
+                            style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#9CA3AF;">
                             <span id="pstep1" style="color:#9CA3AF;">1. Salvataggio</span>
                             <span id="pstep2" style="color:#9CA3AF;">2. Analisi AI</span>
                             <span id="pstep3" style="color:#9CA3AF;">3. Completato</span>
                         </div>
-                        <div id="trascr-err-box" style="display:none;margin-top:10px;background:#FEE2E2;border:1.5px solid #F87171;color:#991B1B;border-radius:8px;padding:10px;font-size:13px;font-weight:600;"></div>
+                        <div id="trascr-err-box"
+                            style="display:none;margin-top:10px;background:#FEE2E2;border:1.5px solid #F87171;color:#991B1B;border-radius:8px;padding:10px;font-size:13px;font-weight:600;">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2020,7 +2106,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                             secondi</small>
                     </div>
                     <div id="modal-analisi-text"
-                        style="display:none;width:100%;min-height:420px;max-height:65vh;overflow-y:auto;border:1.5px solid #CBD5E1;border-radius:8px;padding:18px 20px;font-size:13.5px;font-family:system-ui,sans-serif;line-height:1.85;background:#F8FAFC;color:#1E293B;box-sizing:border-box;"></div>
+                        style="display:none;width:100%;min-height:420px;max-height:65vh;overflow-y:auto;border:1.5px solid #CBD5E1;border-radius:8px;padding:18px 20px;font-size:13.5px;font-family:system-ui,sans-serif;line-height:1.85;background:#F8FAFC;color:#1E293B;box-sizing:border-box;">
+                    </div>
                     <!-- textarea nascosta solo per il copia-testo -->
                     <textarea id="modal-analisi-raw" style="display:none;" readonly></textarea>
                     <div id="analisi-error"
@@ -2038,46 +2125,63 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             </div>
         </div>
 
-                <!-- ══ MODALE EDIT DATA ══ -->
+        <!-- ══ MODALE EDIT DATA ══ -->
         <div class="modal-overlay" id="modal-edit-chk" onclick="closeModalEdit(event)">
-            <div class="modal-box" id="modal-edit-box" style="max-width:800px; max-height: 90vh; display:flex; flex-direction:column;">
+            <div class="modal-box" id="modal-edit-box"
+                style="max-width:800px; max-height: 90vh; display:flex; flex-direction:column;">
                 <div class="modal-header" style="flex-shrink:0;">
                     <h3 id="modal-edit-title">Modifica Totale Checkup</h3>
                     <button class="modal-close" onclick="closeEditCheckup()">✕</button>
                 </div>
-                
+
                 <div class="modal-body" style="overflow-y:auto; flex-grow:1; padding: 20px;">
                     <div id="edit-loading" style="text-align:center; padding: 40px; color:#64748B;">
                         ⏳ Caricamento dati...
                     </div>
-                    
+
                     <div id="edit-form-wrap" style="display:none; flex-direction:column; gap:20px;">
                         <!-- Anagrafica -->
                         <div style="background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #E2E8F0;">
                             <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">👤 Anagrafica Azienda</h4>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                                <div><label class="form-lbl">Azienda</label><input type="text" class="form-inp" id="e_cliente_azienda"></div>
-                                <div><label class="form-lbl">Nome Cliente</label><input type="text" class="form-inp" id="e_cliente_nome"></div>
-                                <div><label class="form-lbl">Cellulare</label><input type="text" class="form-inp" id="e_cliente_cellulare"></div>
-                                <div><label class="form-lbl">Email</label><input type="email" class="form-inp" id="e_cliente_email"></div>
-                                <div><label class="form-lbl">Sito Web</label><input type="text" class="form-inp" id="e_cliente_sito_web"></div>
-                                <div><label class="form-lbl">Partita IVA</label><input type="text" class="form-inp" id="e_cliente_partita_iva"></div>
-                                <div><label class="form-lbl">Settore</label><input type="text" class="form-inp" id="e_cliente_settore"></div>
-                                <div><label class="form-lbl">Dipendenti</label><input type="text" class="form-inp" id="e_cliente_dipendenti"></div>
-                                <div style="grid-column: span 2;"><label class="form-lbl">Fatturato</label><input type="text" class="form-inp" id="e_cliente_fatturato"></div>
+                                <div><label class="form-lbl">Azienda</label><input type="text" class="form-inp"
+                                        id="e_cliente_azienda"></div>
+                                <div><label class="form-lbl">Nome Cliente</label><input type="text" class="form-inp"
+                                        id="e_cliente_nome"></div>
+                                <div><label class="form-lbl">Cellulare</label><input type="text" class="form-inp"
+                                        id="e_cliente_cellulare"></div>
+                                <div><label class="form-lbl">Email</label><input type="email" class="form-inp"
+                                        id="e_cliente_email"></div>
+                                <div><label class="form-lbl">Sito Web</label><input type="text" class="form-inp"
+                                        id="e_cliente_sito_web"></div>
+                                <div><label class="form-lbl">Partita IVA</label><input type="text" class="form-inp"
+                                        id="e_cliente_partita_iva"></div>
+                                <div><label class="form-lbl">Settore</label><input type="text" class="form-inp"
+                                        id="e_cliente_settore"></div>
+                                <div><label class="form-lbl">Dipendenti</label><input type="text" class="form-inp"
+                                        id="e_cliente_dipendenti"></div>
+                                <div style="grid-column: span 2;"><label class="form-lbl">Fatturato</label><input
+                                        type="text" class="form-inp" id="e_cliente_fatturato"></div>
                             </div>
                         </div>
 
                         <!-- A1: Vendite -->
                         <div style="background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #E2E8F0;">
-                            <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">🛒 Area 1: Vendite (Processo e Numeri)</h4>
+                            <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">🛒 Area 1: Vendite (Processo e
+                                Numeri)</h4>
                             <div style="display:flex; flex-direction:column; gap:12px;">
-                                <div><label class="form-lbl">Q1: Il prodotto/servizio di punta</label><textarea class="form-inp" rows="2" id="e_a1_q1_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q2: Quanto tempo richiede una trattativa</label><textarea class="form-inp" rows="2" id="e_a1_q2_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q3: Obiezione più frequente</label><textarea class="form-inp" rows="2" id="e_a1_q3_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q4: Come gestisci il post-vendita</label><textarea class="form-inp" rows="2" id="e_a1_q4_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q5: Quale azione porta più clienti</label><textarea class="form-inp" rows="2" id="e_a1_q5_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q6: Quanti commerciali attivi</label><textarea class="form-inp" rows="2" id="e_a1_q6_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q1: Il prodotto/servizio di punta</label><textarea
+                                        class="form-inp" rows="2" id="e_a1_q1_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q2: Quanto tempo richiede una trattativa</label><textarea
+                                        class="form-inp" rows="2" id="e_a1_q2_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q3: Obiezione più frequente</label><textarea class="form-inp"
+                                        rows="2" id="e_a1_q3_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q4: Come gestisci il post-vendita</label><textarea
+                                        class="form-inp" rows="2" id="e_a1_q4_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q5: Quale azione porta più clienti</label><textarea
+                                        class="form-inp" rows="2" id="e_a1_q5_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q6: Quanti commerciali attivi</label><textarea class="form-inp"
+                                        rows="2" id="e_a1_q6_risposta"></textarea></div>
                             </div>
                         </div>
 
@@ -2085,77 +2189,106 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         <div style="background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #E2E8F0;">
                             <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">⏳ Area 2: Tempo e Delega</h4>
                             <div style="display:flex; flex-direction:column; gap:12px;">
-                                <div><label class="form-lbl">Q1: Quante ore lavori in azienda vs fuori</label><textarea class="form-inp" rows="2" id="e_a2_q1_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q1: Quante ore lavori in azienda vs fuori</label><textarea
+                                        class="form-inp" rows="2" id="e_a2_q1_risposta"></textarea></div>
                                 <div style="display:flex; gap:12px;">
-                                    <div style="flex:1;"><label class="form-lbl">Q2a: Ore perse (settimanali)</label><input type="number" step="0.5" class="form-inp" id="e_a2_q2_ore"></div>
-                                    <div style="flex:1;"><label class="form-lbl">Q2b: Valore Orario (€)</label><input type="number" class="form-inp" id="e_a2_q2_costo"></div>
+                                    <div style="flex:1;"><label class="form-lbl">Q2a: Ore perse (settimanali)</label><input
+                                            type="number" step="0.5" class="form-inp" id="e_a2_q2_ore"></div>
+                                    <div style="flex:1;"><label class="form-lbl">Q2b: Valore Orario (€)</label><input
+                                            type="number" class="form-inp" id="e_a2_q2_costo"></div>
                                 </div>
-                                <div><label class="form-lbl">Q3: Attività che odi ma devi fare</label><textarea class="form-inp" rows="2" id="e_a2_q3_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q4: Chi gestisce l'emergenza</label><textarea class="form-inp" rows="2" id="e_a2_q4_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q5: Quante ferie stacchi davvero</label><textarea class="form-inp" rows="2" id="e_a2_q5_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q3: Attività che odi ma devi fare</label><textarea
+                                        class="form-inp" rows="2" id="e_a2_q3_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q4: Chi gestisce l'emergenza</label><textarea class="form-inp"
+                                        rows="2" id="e_a2_q4_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q5: Quante ferie stacchi davvero</label><textarea
+                                        class="form-inp" rows="2" id="e_a2_q5_risposta"></textarea></div>
                             </div>
                         </div>
 
                         <!-- A3: Marketing -->
                         <div style="background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #E2E8F0;">
-                            <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">📢 Area 3: Marketing e Posizionamento</h4>
+                            <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">📢 Area 3: Marketing e
+                                Posizionamento</h4>
                             <div style="display:flex; flex-direction:column; gap:12px;">
-                                <div><label class="form-lbl">Q1: Investimento in Marketing Mese</label><textarea class="form-inp" rows="2" id="e_a3_q1_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q2: Canale marketing migliore</label><textarea class="form-inp" rows="2" id="e_a3_q2_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q3: Prezzi rispetto concorrenza</label><textarea class="form-inp" rows="2" id="e_a3_q3_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q4: Sconto medio in trattativa</label><textarea class="form-inp" rows="2" id="e_a3_q4_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q5: Elemento differenziante</label><textarea class="form-inp" rows="2" id="e_a3_q5_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q1: Investimento in Marketing Mese</label><textarea
+                                        class="form-inp" rows="2" id="e_a3_q1_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q2: Canale marketing migliore</label><textarea class="form-inp"
+                                        rows="2" id="e_a3_q2_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q3: Prezzi rispetto concorrenza</label><textarea
+                                        class="form-inp" rows="2" id="e_a3_q3_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q4: Sconto medio in trattativa</label><textarea
+                                        class="form-inp" rows="2" id="e_a3_q4_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q5: Elemento differenziante</label><textarea class="form-inp"
+                                        rows="2" id="e_a3_q5_risposta"></textarea></div>
                             </div>
                         </div>
 
                         <!-- A4: Referral -->
                         <div style="background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #E2E8F0;">
-                            <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">🤝 Area 4: Referral e Conversioni</h4>
+                            <h4 style="margin:0 0 12px; color:#0F172A; font-size:15px;">🤝 Area 4: Referral e Conversioni
+                            </h4>
                             <div style="display:flex; flex-direction:column; gap:12px;">
-                                <div><label class="form-lbl">Q1: Metodo attuale Referral</label><textarea class="form-inp" rows="2" id="e_a4_q1_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q1: Metodo attuale Referral</label><textarea class="form-inp"
+                                        rows="2" id="e_a4_q1_risposta"></textarea></div>
                                 <div style="display:flex; gap:12px;">
-                                    <div style="flex:1;"><label class="form-lbl">Q2a: % Conversioni Fredde</label><input type="number" class="form-inp" id="e_a4_q2_perc"></div>
-                                    <div style="flex:1;"><label class="form-lbl">Q2b: N. Trattative Attive Mese</label><input type="number" class="form-inp" id="e_a4_q2_trattative"></div>
+                                    <div style="flex:1;"><label class="form-lbl">Q2a: % Conversioni Fredde</label><input
+                                            type="number" class="form-inp" id="e_a4_q2_perc"></div>
+                                    <div style="flex:1;"><label class="form-lbl">Q2b: N. Trattative Attive
+                                            Mese</label><input type="number" class="form-inp" id="e_a4_q2_trattative"></div>
                                 </div>
-                                <div><label class="form-lbl">Q3: LTV stimato (Valore a vita cliente)</label><textarea class="form-inp" rows="2" id="e_a4_q3_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q4: Motivo principale disdetta</label><textarea class="form-inp" rows="2" id="e_a4_q4_risposta"></textarea></div>
-                                <div><label class="form-lbl">Q5: Costo Acquisizione (CPA)</label><textarea class="form-inp" rows="2" id="e_a4_q5_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q3: LTV stimato (Valore a vita cliente)</label><textarea
+                                        class="form-inp" rows="2" id="e_a4_q3_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q4: Motivo principale disdetta</label><textarea
+                                        class="form-inp" rows="2" id="e_a4_q4_risposta"></textarea></div>
+                                <div><label class="form-lbl">Q5: Costo Acquisizione (CPA)</label><textarea class="form-inp"
+                                        rows="2" id="e_a4_q5_risposta"></textarea></div>
                             </div>
                         </div>
 
                         <!-- Punteggi Realtà e Desiderio -->
                         <div style="background:#FFFBEB; padding:16px; border-radius:8px; border:1px solid #FDE68A;">
                             <h4 style="margin:0 0 4px; color:#0F172A; font-size:15px;">📊 Punteggi Radar (1–10)</h4>
-                            <p style="margin:0 0 14px; font-size:12px; color:#92400E;">Realtà = situazione attuale · Desiderio = obiettivo percepito dal cliente</p>
+                            <p style="margin:0 0 14px; font-size:12px; color:#92400E;">Realtà = situazione attuale ·
+                                Desiderio = obiettivo percepito dal cliente</p>
                             <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
-                                <div style="text-align:center; font-size:11px; font-weight:700; color:#475569; grid-column:1;">Area</div>
-                                <div style="text-align:center; font-size:11px; font-weight:700; color:#1B3A6B; grid-column:2;">Realtà</div>
-                                <div style="text-align:center; font-size:11px; font-weight:700; color:#F59E0B; grid-column:3;">Desiderio</div>
+                                <div
+                                    style="text-align:center; font-size:11px; font-weight:700; color:#475569; grid-column:1;">
+                                    Area</div>
+                                <div
+                                    style="text-align:center; font-size:11px; font-weight:700; color:#1B3A6B; grid-column:2;">
+                                    Realtà</div>
+                                <div
+                                    style="text-align:center; font-size:11px; font-weight:700; color:#F59E0B; grid-column:3;">
+                                    Desiderio</div>
                                 <div style="grid-column:4;"></div>
                             </div>
                             <?php
                             $radar_aree = [
-                                'area1_relazionale'   => '🛒 Vendite',
-                                'area2_automazione'   => '⏳ Delega',
-                                'area3_posizionamento'=> '📢 Marketing',
-                                'area4_crm'           => '🤝 Referral',
+                                'area1_relazionale' => '🛒 Vendite',
+                                'area2_automazione' => '⏳ Delega',
+                                'area3_posizionamento' => '📢 Marketing',
+                                'area4_crm' => '🤝 Referral',
                             ];
                             foreach ($radar_aree as $ak => $label): ?>
-                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; align-items:center; margin-bottom:8px;">
-                                <div style="font-size:13px; font-weight:600; color:#374151;"><?= $label ?></div>
-                                <input type="number" min="1" max="10" class="form-inp" id="e_realta_<?= $ak ?>" placeholder="1–10" style="text-align:center;">
-                                <input type="number" min="1" max="10" class="form-inp" id="e_desiderio_<?= $ak ?>" placeholder="1–10" style="text-align:center;">
-                            </div>
+                                <div
+                                    style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                    <div style="font-size:13px; font-weight:600; color:#374151;"><?= $label ?></div>
+                                    <input type="number" min="1" max="10" class="form-inp" id="e_realta_<?= $ak ?>"
+                                        placeholder="1–10" style="text-align:center;">
+                                    <input type="number" min="1" max="10" class="form-inp" id="e_desiderio_<?= $ak ?>"
+                                        placeholder="1–10" style="text-align:center;">
+                                </div>
                             <?php endforeach; ?>
                         </div>
 
                     </div>
-                    
+
                     <div id="edit-progress" style="display:none; margin-top:16px;">
                         <div style="font-size:13px; font-weight:600; color:#374151;">⏳ Salvataggio in corso...</div>
                     </div>
                 </div>
-                
+
                 <div class="modal-footer" style="flex-shrink:0;">
                     <button class="btn-cancel" onclick="closeEditCheckup()">Annulla</button>
                     <button class="btn-save" id="btn-save-edit" onclick="saveEditCheckup()" disabled>Salva Tutto</button>
@@ -2165,9 +2298,30 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
         </div>
 
         <style>
-            .form-lbl { font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px; }
-            .form-inp { width:100%; padding:8px 10px; border:1px solid #CBD5E1; border-radius:6px; font-size:14px; font-family:inherit; box-sizing:border-box; background:#fff; }
-            .form-inp:focus { outline:none; border-color:#0891B2; box-shadow:0 0 0 2px rgba(8,145,178,0.2); }
+            .form-lbl {
+                font-size: 12px;
+                font-weight: 600;
+                color: #475569;
+                display: block;
+                margin-bottom: 4px;
+            }
+
+            .form-inp {
+                width: 100%;
+                padding: 8px 10px;
+                border: 1px solid #CBD5E1;
+                border-radius: 6px;
+                font-size: 14px;
+                font-family: inherit;
+                box-sizing: border-box;
+                background: #fff;
+            }
+
+            .form-inp:focus {
+                outline: none;
+                border-color: #0891B2;
+                box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.2);
+            }
         </style>
 
         <script>
@@ -2186,12 +2340,12 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             function openEditCheckup(id) {
                 _currentEditId = id;
                 document.getElementById('modal-edit-chk').classList.add('open');
-                
+
                 document.getElementById('edit-loading').style.display = 'block';
                 document.getElementById('edit-form-wrap').style.display = 'none';
                 document.getElementById('btn-save-edit').disabled = true;
                 document.getElementById('modal-edit-msg').textContent = '';
-                
+
                 // Fetch data from server
                 fetch('dashboard.php?ajax=get_checkup_data&id=' + id)
                     .then(r => r.json())
@@ -2204,7 +2358,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                     el.value = res.data[f] || '';
                                 }
                             });
-                            
+
                             document.getElementById('edit-loading').style.display = 'none';
                             document.getElementById('edit-form-wrap').style.display = 'flex';
                             document.getElementById('btn-save-edit').disabled = false;
@@ -2221,7 +2375,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                 if (document.getElementById('btn-save-edit').disabled && document.getElementById('edit-progress').style.display === 'block') return;
                 document.getElementById('modal-edit-chk').classList.remove('open');
             }
-            
+
             function closeModalEdit(e) {
                 if (e.target && e.target.id === 'modal-edit-chk') closeEditCheckup();
             }
@@ -2231,7 +2385,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                 btn.disabled = true;
                 document.getElementById('edit-progress').style.display = 'block';
                 document.getElementById('modal-edit-msg').textContent = '';
-                
+
                 var payload = { id: _currentEditId };
                 _editFieldsMap.forEach(f => {
                     var el = document.getElementById('e_' + f);
@@ -2245,25 +2399,25 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.ok) {
-                        document.getElementById('modal-edit-msg').style.color = '#059669';
-                        document.getElementById('modal-edit-msg').textContent = '✅ Salvato! Ricarica in corso...';
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.ok) {
+                            document.getElementById('modal-edit-msg').style.color = '#059669';
+                            document.getElementById('modal-edit-msg').textContent = '✅ Salvato! Ricarica in corso...';
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            document.getElementById('modal-edit-msg').style.color = '#DC2626';
+                            document.getElementById('modal-edit-msg').textContent = '❌ Errore: ' + data.msg;
+                            btn.disabled = false;
+                            document.getElementById('edit-progress').style.display = 'none';
+                        }
+                    })
+                    .catch(err => {
                         document.getElementById('modal-edit-msg').style.color = '#DC2626';
-                        document.getElementById('modal-edit-msg').textContent = '❌ Errore: ' + data.msg;
+                        document.getElementById('modal-edit-msg').textContent = '❌ Errore di rete.';
                         btn.disabled = false;
                         document.getElementById('edit-progress').style.display = 'none';
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('modal-edit-msg').style.color = '#DC2626';
-                    document.getElementById('modal-edit-msg').textContent = '❌ Errore di rete.';
-                    btn.disabled = false;
-                    document.getElementById('edit-progress').style.display = 'none';
-                });
+                    });
             }
 
             var _currentTrascrId = '';
@@ -2281,7 +2435,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                 var btn = _getAnalisiBtn(id);
                 if (!btn) return;
                 btn.className = 'btn-action ' + (hasAnalisi ? 'btn-analisi' : 'btn-analisi-empty');
-                
+
                 var vTxt = '';
                 if (hasAnalisi) {
                     if (voto !== undefined && voto !== null) {
@@ -2291,7 +2445,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         if (m) vTxt = ' ' + m[1] + '/10';
                     }
                 }
-                
+
                 btn.textContent = hasAnalisi ? '🎯 Analisi' + vTxt : '🔒 Analisi';
                 btn.title = hasAnalisi ? '' : 'Salva prima la trascrizione per generare l\'analisi';
                 if (analisiText) {
@@ -2306,10 +2460,10 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             function _showAnalisiInModal(text) {
                 document.getElementById('analisi-spinner').style.display = 'none';
                 document.getElementById('analisi-error').style.display = 'none';
-                
+
                 // Salva il raw per il pulsante copia
                 document.getElementById('modal-analisi-raw').value = text;
-                
+
                 // Semplice parser markdown con supporto H1/H2/H3 e Liste
                 var html = text
                     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') // Escape HTML di base
@@ -2332,11 +2486,11 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                     .replace(/<\/h3>\s*<br>/g, '</h3>')
                     .replace(/<br>\s*<li/g, '<li')
                     .replace(/<\/li>\s*<br>/g, '</li>');
-                
+
                 var div = document.getElementById('modal-analisi-text');
                 div.innerHTML = html;
                 div.style.display = 'block';
-                
+
                 document.getElementById('btn-copy-analisi').style.display = 'inline-flex';
                 document.getElementById('btn-retry-analisi').style.display = 'none';
             }
@@ -2355,8 +2509,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             function _progressStep(pct, label, step) {
                 document.getElementById('trascr-progress-bar').style.width = pct + '%';
                 document.getElementById('trascr-progress-label').textContent = label;
-                var steps = ['pstep1','pstep2','pstep3'];
-                steps.forEach(function(s, i) {
+                var steps = ['pstep1', 'pstep2', 'pstep3'];
+                steps.forEach(function (s, i) {
                     document.getElementById(s).style.color = (i < step) ? '#0891B2' : '#9CA3AF';
                     document.getElementById(s).style.fontWeight = (i === step - 1) ? '700' : '400';
                 });
@@ -2407,8 +2561,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: savedId, trascrizione: text })
                 })
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
                         if (!data.ok) {
                             _showTrascrProgress(false);
                             var eb = document.getElementById('trascr-err-box');
@@ -2420,7 +2574,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
 
                         // Aggiorna bottone Trascrizione nella tabella
                         var btns = document.querySelectorAll('[data-id="' + savedId + '"]');
-                        btns.forEach(function(b) {
+                        btns.forEach(function (b) {
                             b.setAttribute('data-text', text);
                             if (b.classList.contains('btn-trascr') || b.classList.contains('has-trascr')) {
                                 if (text.trim()) {
@@ -2434,7 +2588,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
 
                         if (!text.trim()) {
                             _progressStep(100, '✅ Salvato.', 3);
-                            setTimeout(function() {
+                            setTimeout(function () {
                                 _showTrascrProgress(false);
                                 document.getElementById('modal-trascr').classList.remove('open');
                             }, 800);
@@ -2448,7 +2602,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
 
                         // Avanza barra lentamente durante l'attesa
                         var fakeW = 40;
-                        var fakeTimer = setInterval(function() {
+                        var fakeTimer = setInterval(function () {
                             fakeW = Math.min(fakeW + 1, 85);
                             document.getElementById('trascr-progress-bar').style.width = fakeW + '%';
                         }, 600);
@@ -2458,14 +2612,14 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ id: savedId })
                         })
-                            .then(function(r) { return r.json(); })
-                            .then(function(d) {
+                            .then(function (r) { return r.json(); })
+                            .then(function (d) {
                                 clearInterval(fakeTimer);
                                 if (ab) { ab.disabled = false; }
                                 if (d.ok) {
                                     _setAnalisiBtn(savedId, true, d.analisi, d.voto);
                                     _progressStep(100, '✅ Analisi generata con successo! Chiusura...', 3);
-                                    setTimeout(function() {
+                                    setTimeout(function () {
                                         _showTrascrProgress(false);
                                         document.getElementById('modal-trascr').classList.remove('open');
                                     }, 1500);
@@ -2479,7 +2633,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                     document.getElementById('btn-chiudi-trascr').disabled = false;
                                 }
                             })
-                            .catch(function(err) {
+                            .catch(function (err) {
                                 clearInterval(fakeTimer);
                                 if (ab) { ab.disabled = false; }
                                 _setAnalisiBtn(savedId, false, null, null);
@@ -2491,7 +2645,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                 document.getElementById('btn-chiudi-trascr').disabled = false;
                             });
                     })
-                    .catch(function() {
+                    .catch(function () {
                         _showTrascrProgress(false);
                         var eb = document.getElementById('trascr-err-box');
                         eb.textContent = '❌ Errore di rete. Controlla la connessione e riprova.';
@@ -2547,7 +2701,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         _analisiCache[id] = decoded;
                         _showAnalisiInModal(decoded);
                         return;
-                    } catch (e) {}
+                    } catch (e) { }
                 }
                 // 3: se il bottone non ha analisi, mostra messaggio
                 var errDiv = document.getElementById('analisi-error');
@@ -2578,7 +2732,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                 document.getElementById('analisi-spinner').style.display = 'block';
                 document.getElementById('analisi-error').style.display = 'none';
                 document.getElementById('btn-retry-analisi').style.display = 'none';
-                _generateAnalisi(_currentAnalisiId, function(ok, result) {
+                _generateAnalisi(_currentAnalisiId, function (ok, result) {
                     if (ok) {
                         _setAnalisiBtn(_currentAnalisiId, true, result, null);
                         _showAnalisiInModal(result);
@@ -2653,8 +2807,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         <span class="offerta-product-desc">App brandizzata iOS/Android per gestione referral</span>
                     </div>
                     <div class="offerta-importo">
-                        <input type="number" id="imp-app" value="3497" min="0" step="1"
-                            oninput="ricalcolaTotale()" disabled>
+                        <input type="number" id="imp-app" value="3497" min="0" step="1" oninput="ricalcolaTotale()"
+                            disabled>
                         <span>€</span>
                     </div>
                 </div>
@@ -2668,8 +2822,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         <span class="offerta-product-desc">Server dedicato, CRM integration, verticalizzazioni</span>
                     </div>
                     <div class="offerta-importo">
-                        <input type="number" id="imp-app-pro" value="497" min="0" step="1"
-                            oninput="ricalcolaTotale()" disabled>
+                        <input type="number" id="imp-app-pro" value="497" min="0" step="1" oninput="ricalcolaTotale()"
+                            disabled>
                         <span>€</span>
                     </div>
                 </div>
@@ -2680,11 +2834,12 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         onchange="toggleImporto('scouting'); ricalcolaTotale()">
                     <div class="offerta-label-wrap">
                         <span class="offerta-product-name">Scouting</span>
-                        <span class="offerta-product-desc">10 Connettori prequalificati + AIRA© Matching + Coaching</span>
+                        <span class="offerta-product-desc">10 Connettori prequalificati + AIRA© Matching +
+                            Coaching</span>
                     </div>
                     <div class="offerta-importo">
-                        <input type="number" id="imp-scouting" value="1497" min="0" step="1"
-                            oninput="ricalcolaTotale()" disabled>
+                        <input type="number" id="imp-scouting" value="1497" min="0" step="1" oninput="ricalcolaTotale()"
+                            disabled>
                         <span>€</span>
                     </div>
                 </div>
@@ -2698,8 +2853,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         <span class="offerta-product-desc">Flusso automazione su misura (N8N / Make / Zapier)</span>
                     </div>
                     <div class="offerta-importo">
-                        <input type="number" id="imp-automation" value="0" min="0" step="1"
-                            oninput="ricalcolaTotale()" disabled placeholder="Importo">
+                        <input type="number" id="imp-automation" value="0" min="0" step="1" oninput="ricalcolaTotale()"
+                            disabled placeholder="Importo">
                         <span>€</span>
                     </div>
                     <div class="offerta-desc-row" id="desc-row-automation">
@@ -2717,8 +2872,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                         <span class="offerta-product-desc">CRM setup completo + formazione team (4 persone)</span>
                     </div>
                     <div class="offerta-importo">
-                        <input type="number" id="imp-migacrm" value="997" min="0" step="1"
-                            oninput="ricalcolaTotale()" disabled>
+                        <input type="number" id="imp-migacrm" value="997" min="0" step="1" oninput="ricalcolaTotale()"
+                            disabled>
                         <span>€</span>
                     </div>
                 </div>
@@ -2757,225 +2912,225 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
     </div>
 
     <script>
-    // ── MODAL OFFERTA ──────────────────────────────────────────────
-    var _offertaCheckupId = null;
+        // ── MODAL OFFERTA ──────────────────────────────────────────────
+        var _offertaCheckupId = null;
 
-    function openOfferta(checkupId, azienda) {
-        _offertaCheckupId = checkupId;
-        document.getElementById('offerta-azienda-title').textContent = azienda || 'Cliente';
-        // Reset stato
-        ['app','app-pro','scouting','automation','migacrm','enterprise'].forEach(function(k) {
-            var chk = document.getElementById('chk-' + k);
-            var inp = document.getElementById('imp-' + k);
-            if (chk) chk.checked = false;
-            if (inp) inp.disabled = true;
-        });
-        var descRow = document.getElementById('desc-row-automation');
-        if (descRow) descRow.classList.remove('visible');
-        var descTxt = document.getElementById('desc-automation');
-        if (descTxt) descTxt.value = '';
-        document.getElementById('offerta-totale').textContent = '0';
-        document.getElementById('offerta-msg').textContent = '';
-        document.getElementById('btn-genera-offerta').disabled = false;
-        document.getElementById('modal-offerta').classList.add('open');
-    }
-
-    function closeOfferta() {
-        document.getElementById('modal-offerta').classList.remove('open');
-    }
-
-    function closeOffertaOverlay(e) {
-        if (e.target === document.getElementById('modal-offerta')) closeOfferta();
-    }
-
-    function toggleImporto(key) {
-        var chk = document.getElementById('chk-' + key);
-        var inp = document.getElementById('imp-' + key);
-        if (inp) inp.disabled = !chk.checked;
-    }
-
-    function toggleDesc(key) {
-        var chk = document.getElementById('chk-' + key);
-        var row = document.getElementById('desc-row-' + key);
-        if (row) {
-            if (chk.checked) row.classList.add('visible');
-            else row.classList.remove('visible');
-        }
-    }
-
-    function ricalcolaTotale() {
-        var prodotti = ['app','app-pro','scouting','automation','migacrm','enterprise'];
-        var totale = 0;
-        prodotti.forEach(function(k) {
-            var chk = document.getElementById('chk-' + k);
-            var inp = document.getElementById('imp-' + k);
-            if (chk && chk.checked && inp) {
-                totale += parseFloat(inp.value) || 0;
-            }
-        });
-        document.getElementById('offerta-totale').textContent = totale.toLocaleString('it-IT');
-    }
-
-    function generaOfferta() {
-        var payload = {
-            checkup_id: _offertaCheckupId,
-            includi_app:        document.getElementById('chk-app').checked       ? 'SI' : 'NO',
-            includi_app_pro:    document.getElementById('chk-app-pro').checked   ? 'SI' : 'NO',
-            includi_scouting:   document.getElementById('chk-scouting').checked  ? 'SI' : 'NO',
-            includi_automazione:document.getElementById('chk-automation').checked ? 'SI' : 'NO',
-            includi_migacrm:    document.getElementById('chk-migacrm').checked   ? 'SI' : 'NO',
-            includi_enterprise: document.getElementById('chk-enterprise').checked ? 'SI' : 'NO',
-            importo_app:        parseFloat(document.getElementById('imp-app').value)        || 0,
-            importo_app_pro:    parseFloat(document.getElementById('imp-app-pro').value)    || 0,
-            importo_scouting:   parseFloat(document.getElementById('imp-scouting').value)   || 0,
-            importo_automazione:parseFloat(document.getElementById('imp-automation').value) || 0,
-            importo_migacrm:    parseFloat(document.getElementById('imp-migacrm').value)    || 0,
-            importo_enterprise: parseFloat(document.getElementById('imp-enterprise').value) || 0,
-            desc_automazione:   document.getElementById('desc-automation').value.trim(),
-            totale:             parseFloat(document.getElementById('offerta-totale').textContent.replace(/\./g,'')) || 0
-        };
-
-        // Validazione: almeno un prodotto selezionato
-        var selezionati = ['app','app-pro','scouting','automation','migacrm','enterprise']
-            .filter(function(k){ return document.getElementById('chk-'+k).checked; });
-        if (selezionati.length === 0) {
-            setOffertaMsg('Seleziona almeno un prodotto.', 'err');
-            return;
+        function openOfferta(checkupId, azienda) {
+            _offertaCheckupId = checkupId;
+            document.getElementById('offerta-azienda-title').textContent = azienda || 'Cliente';
+            // Reset stato
+            ['app', 'app-pro', 'scouting', 'automation', 'migacrm', 'enterprise'].forEach(function (k) {
+                var chk = document.getElementById('chk-' + k);
+                var inp = document.getElementById('imp-' + k);
+                if (chk) chk.checked = false;
+                if (inp) inp.disabled = true;
+            });
+            var descRow = document.getElementById('desc-row-automation');
+            if (descRow) descRow.classList.remove('visible');
+            var descTxt = document.getElementById('desc-automation');
+            if (descTxt) descTxt.value = '';
+            document.getElementById('offerta-totale').textContent = '0';
+            document.getElementById('offerta-msg').textContent = '';
+            document.getElementById('btn-genera-offerta').disabled = false;
+            document.getElementById('modal-offerta').classList.add('open');
         }
 
-        // Validazione: se automation selezionata e importo = 0
-        if (document.getElementById('chk-automation').checked &&
-            (parseFloat(document.getElementById('imp-automation').value) || 0) === 0) {
-            setOffertaMsg("Inserisci l'importo per l'Automation.", 'err');
-            return;
+        function closeOfferta() {
+            document.getElementById('modal-offerta').classList.remove('open');
         }
 
-        var checkupId = _offertaCheckupId;
+        function closeOffertaOverlay(e) {
+            if (e.target === document.getElementById('modal-offerta')) closeOfferta();
+        }
 
-        // Chiudi il popup immediatamente
-        closeOfferta();
+        function toggleImporto(key) {
+            var chk = document.getElementById('chk-' + key);
+            var inp = document.getElementById('imp-' + key);
+            if (inp) inp.disabled = !chk.checked;
+        }
 
-        // Mostra icona grigia pulsante nella riga
-        showGdocPending(checkupId);
-
-        // Invia al backend
-        fetch('?ajax=genera_offerta', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-            if (data.success) {
-                // Avvia polling su Supabase fino a quando offerta_in_elaborazione = false
-                startPollingOfferta(checkupId);
-            } else {
-                // Errore immediato: rimuovi l'icona grigia
-                removeGdocIcon(checkupId);
-                alert('Errore: ' + (data.error || 'Generazione fallita'));
-            }
-        })
-        .catch(function(err) {
-            removeGdocIcon(checkupId);
-            alert('Errore di rete: ' + err.message);
-        });
-    }
-
-    // Mostra/sostituisce icona grigia pulsante nella cella offerta
-    function showGdocPending(checkupId) {
-        var existing = document.getElementById('gdoc-' + checkupId);
-        if (existing) {
-            // Resetta: rimuovi eventuali classi ready/href e rimetti pending
-            existing.className = 'gdoc-icon pending';
-            existing.removeAttribute('href');
-            existing.removeAttribute('target');
-            existing.title = 'Offerta in elaborazione...';
-            // Rimuovi onclick se era un link
-            existing.onclick = null;
-            // Trasforma in span se era <a>
-            if (existing.tagName === 'A') {
-                var span = document.createElement('span');
-                span.className = 'gdoc-icon pending';
-                span.id = 'gdoc-' + checkupId;
-                span.title = 'Offerta in elaborazione...';
-                span.textContent = '📄';
-                existing.parentNode.replaceChild(span, existing);
-            }
-        } else {
-            // Crea nuova icona e aggiungila nella cella offerta
-            var cell = document.querySelector('button[onclick*="' + checkupId + '"]');
-            if (cell) {
-                var container = cell.closest('.offerta-cell') || cell.parentNode;
-                var span = document.createElement('span');
-                span.className = 'gdoc-icon pending';
-                span.id = 'gdoc-' + checkupId;
-                span.title = 'Offerta in elaborazione...';
-                span.textContent = '📄';
-                container.appendChild(span);
+        function toggleDesc(key) {
+            var chk = document.getElementById('chk-' + key);
+            var row = document.getElementById('desc-row-' + key);
+            if (row) {
+                if (chk.checked) row.classList.add('visible');
+                else row.classList.remove('visible');
             }
         }
-    }
 
-    // Converte l'icona grigia in icona colorata con link
-    function showGdocReady(checkupId, docUrl) {
-        var el = document.getElementById('gdoc-' + checkupId);
-        if (!el) return;
-        var a = document.createElement('a');
-        a.className = 'gdoc-icon ready';
-        a.id = 'gdoc-' + checkupId;
-        a.href = docUrl;
-        a.target = '_blank';
-        a.title = 'Apri offerta Google Doc';
-        a.textContent = '📄';
-        el.parentNode.replaceChild(a, el);
-    }
-
-    // Rimuove l'icona (in caso di errore)
-    function removeGdocIcon(checkupId) {
-        var el = document.getElementById('gdoc-' + checkupId);
-        if (el) el.remove();
-    }
-
-    // Polling ogni 4 secondi su Supabase per controllare offerta_in_elaborazione e offerta_doc_url
-    var _pollingTimers = {};
-
-    function startPollingOfferta(checkupId) {
-        // Cancella polling precedente se esiste
-        if (_pollingTimers[checkupId]) {
-            clearInterval(_pollingTimers[checkupId]);
+        function ricalcolaTotale() {
+            var prodotti = ['app', 'app-pro', 'scouting', 'automation', 'migacrm', 'enterprise'];
+            var totale = 0;
+            prodotti.forEach(function (k) {
+                var chk = document.getElementById('chk-' + k);
+                var inp = document.getElementById('imp-' + k);
+                if (chk && chk.checked && inp) {
+                    totale += parseFloat(inp.value) || 0;
+                }
+            });
+            document.getElementById('offerta-totale').textContent = totale.toLocaleString('it-IT');
         }
-        var attempts = 0;
-        var maxAttempts = 75; // 5 minuti max (75 × 4s)
 
-        _pollingTimers[checkupId] = setInterval(function() {
-            attempts++;
-            if (attempts > maxAttempts) {
-                clearInterval(_pollingTimers[checkupId]);
-                removeGdocIcon(checkupId);
-                alert('Timeout: la generazione dell\'offerta ha impiegato troppo tempo. Riprova.');
+        function generaOfferta() {
+            var payload = {
+                checkup_id: _offertaCheckupId,
+                includi_app: document.getElementById('chk-app').checked ? 'SI' : 'NO',
+                includi_app_pro: document.getElementById('chk-app-pro').checked ? 'SI' : 'NO',
+                includi_scouting: document.getElementById('chk-scouting').checked ? 'SI' : 'NO',
+                includi_automazione: document.getElementById('chk-automation').checked ? 'SI' : 'NO',
+                includi_migacrm: document.getElementById('chk-migacrm').checked ? 'SI' : 'NO',
+                includi_enterprise: document.getElementById('chk-enterprise').checked ? 'SI' : 'NO',
+                importo_app: parseFloat(document.getElementById('imp-app').value) || 0,
+                importo_app_pro: parseFloat(document.getElementById('imp-app-pro').value) || 0,
+                importo_scouting: parseFloat(document.getElementById('imp-scouting').value) || 0,
+                importo_automazione: parseFloat(document.getElementById('imp-automation').value) || 0,
+                importo_migacrm: parseFloat(document.getElementById('imp-migacrm').value) || 0,
+                importo_enterprise: parseFloat(document.getElementById('imp-enterprise').value) || 0,
+                desc_automazione: document.getElementById('desc-automation').value.trim(),
+                totale: parseFloat(document.getElementById('offerta-totale').textContent.replace(/\./g, '')) || 0
+            };
+
+            // Validazione: almeno un prodotto selezionato
+            var selezionati = ['app', 'app-pro', 'scouting', 'automation', 'migacrm', 'enterprise']
+                .filter(function (k) { return document.getElementById('chk-' + k).checked; });
+            if (selezionati.length === 0) {
+                setOffertaMsg('Seleziona almeno un prodotto.', 'err');
                 return;
             }
 
-            fetch('?ajax=poll_offerta&id=' + encodeURIComponent(checkupId))
-                .then(function(r){ return r.json(); })
-                .then(function(data) {
-                    if (data.doc_url && !data.in_elaborazione) {
-                        clearInterval(_pollingTimers[checkupId]);
-                        showGdocReady(checkupId, data.doc_url);
-                    }
-                    // Se ancora in elaborazione, continua il polling
-                })
-                .catch(function() {
-                    // Errore di rete temporaneo: continua il polling
-                });
-        }, 4000);
-    }
+            // Validazione: se automation selezionata e importo = 0
+            if (document.getElementById('chk-automation').checked &&
+                (parseFloat(document.getElementById('imp-automation').value) || 0) === 0) {
+                setOffertaMsg("Inserisci l'importo per l'Automation.", 'err');
+                return;
+            }
 
-    function setOffertaMsg(txt, tipo) {
-        var el = document.getElementById('offerta-msg');
-        el.textContent = txt;
-        el.className = 'offerta-msg' + (tipo ? ' ' + tipo : '');
-    }
+            var checkupId = _offertaCheckupId;
+
+            // Chiudi il popup immediatamente
+            closeOfferta();
+
+            // Mostra icona grigia pulsante nella riga
+            showGdocPending(checkupId);
+
+            // Invia al backend
+            fetch('?ajax=genera_offerta', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        // Avvia polling su Supabase fino a quando offerta_in_elaborazione = false
+                        startPollingOfferta(checkupId);
+                    } else {
+                        // Errore immediato: rimuovi l'icona grigia
+                        removeGdocIcon(checkupId);
+                        alert('Errore: ' + (data.error || 'Generazione fallita'));
+                    }
+                })
+                .catch(function (err) {
+                    removeGdocIcon(checkupId);
+                    alert('Errore di rete: ' + err.message);
+                });
+        }
+
+        // Mostra/sostituisce icona grigia pulsante nella cella offerta
+        function showGdocPending(checkupId) {
+            var existing = document.getElementById('gdoc-' + checkupId);
+            if (existing) {
+                // Resetta: rimuovi eventuali classi ready/href e rimetti pending
+                existing.className = 'gdoc-icon pending';
+                existing.removeAttribute('href');
+                existing.removeAttribute('target');
+                existing.title = 'Offerta in elaborazione...';
+                // Rimuovi onclick se era un link
+                existing.onclick = null;
+                // Trasforma in span se era <a>
+                if (existing.tagName === 'A') {
+                    var span = document.createElement('span');
+                    span.className = 'gdoc-icon pending';
+                    span.id = 'gdoc-' + checkupId;
+                    span.title = 'Offerta in elaborazione...';
+                    span.textContent = '📄';
+                    existing.parentNode.replaceChild(span, existing);
+                }
+            } else {
+                // Crea nuova icona e aggiungila nella cella offerta
+                var cell = document.querySelector('button[onclick*="' + checkupId + '"]');
+                if (cell) {
+                    var container = cell.closest('.offerta-cell') || cell.parentNode;
+                    var span = document.createElement('span');
+                    span.className = 'gdoc-icon pending';
+                    span.id = 'gdoc-' + checkupId;
+                    span.title = 'Offerta in elaborazione...';
+                    span.textContent = '📄';
+                    container.appendChild(span);
+                }
+            }
+        }
+
+        // Converte l'icona grigia in icona colorata con link
+        function showGdocReady(checkupId, docUrl) {
+            var el = document.getElementById('gdoc-' + checkupId);
+            if (!el) return;
+            var a = document.createElement('a');
+            a.className = 'gdoc-icon ready';
+            a.id = 'gdoc-' + checkupId;
+            a.href = docUrl;
+            a.target = '_blank';
+            a.title = 'Apri offerta Google Doc';
+            a.textContent = '📄';
+            el.parentNode.replaceChild(a, el);
+        }
+
+        // Rimuove l'icona (in caso di errore)
+        function removeGdocIcon(checkupId) {
+            var el = document.getElementById('gdoc-' + checkupId);
+            if (el) el.remove();
+        }
+
+        // Polling ogni 4 secondi su Supabase per controllare offerta_in_elaborazione e offerta_doc_url
+        var _pollingTimers = {};
+
+        function startPollingOfferta(checkupId) {
+            // Cancella polling precedente se esiste
+            if (_pollingTimers[checkupId]) {
+                clearInterval(_pollingTimers[checkupId]);
+            }
+            var attempts = 0;
+            var maxAttempts = 75; // 5 minuti max (75 × 4s)
+
+            _pollingTimers[checkupId] = setInterval(function () {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    clearInterval(_pollingTimers[checkupId]);
+                    removeGdocIcon(checkupId);
+                    alert('Timeout: la generazione dell\'offerta ha impiegato troppo tempo. Riprova.');
+                    return;
+                }
+
+                fetch('?ajax=poll_offerta&id=' + encodeURIComponent(checkupId))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.doc_url && !data.in_elaborazione) {
+                            clearInterval(_pollingTimers[checkupId]);
+                            showGdocReady(checkupId, data.doc_url);
+                        }
+                        // Se ancora in elaborazione, continua il polling
+                    })
+                    .catch(function () {
+                        // Errore di rete temporaneo: continua il polling
+                    });
+            }, 4000);
+        }
+
+        function setOffertaMsg(txt, tipo) {
+            var el = document.getElementById('offerta-msg');
+            el.textContent = txt;
+            el.className = 'offerta-msg' + (tipo ? ' ' + tipo : '');
+        }
     </script>
 
 </body>

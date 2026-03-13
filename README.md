@@ -39,7 +39,7 @@ Il sistema comprende 3 componenti principali:
 | `gap_totale` | NUMERIC | Somma totale dei gap |
 | `ferita_principale` / `ferita_principale_label` | TEXT | Area con il gap maggiore |
 | `livello_maturita` | FLOAT (1-10) | Indice di maturità commerciale |
-| `livello_maturita_label` | TEXT | Label: Caos / Gestito / Definito / Ottimizzato / Strategico |
+| `livello_maturita_label` | TEXT | Label: CAOS (Reattivo) / GESTITO / DEFINITO / OTTIMIZZATO / STRATEGICO |
 | `risposte_area1..4` | JSONB | Risposte qualitative per ciascuna area |
 | `costo_inefficienza_annua` | NUMERIC | `ore × 52 × costo_orario × venditori` |
 | `perdita_pipeline_annua` | NUMERIC | `(perc/100) × trattative × ltv × 12` |
@@ -145,17 +145,17 @@ Pannello di amministrazione riservato agli operatori Migastone, con autenticazio
 
 Flusso automatico al salvataggio trascrizione:
 
-1. Operatore incolla la trascrizione nel modal → clicca **Salva**
-2. La trascrizione viene salvata + l'analisi precedente viene cancellata
-3. Viene avviata automaticamente una chiamata a **Perplexity `sonar-pro`**
-4. Il pulsante 🔒 Analisi diventa ⏳ Analisi... (disabilitato)
-5. L'analisi viene salvata nel campo `analisi_call` del record Supabase
-6. Il pulsante diventa 🎯 Analisi (cyan, cliccabile)
-7. Cliccando si apre un modal (ora con supporto al rendering Markdown per grassetti e newline) con:
-   - **Analisi discorsiva** focalizzata sulla motivazione del consulente e valutazioni puntuali sulle varie aree (fino a 1000 parole)
-   - **Aree di miglioramento pratiche**, con esempi e riformulazioni specifiche estratte testualmente dalla trascrizione
-   - **📊 PAGELLA DI PERFORMANCE** (spostata sul fondo) con 6 criteri base 10 (Apertura, Raccolta Dati, Emorragia, Proposta, Obiezioni, Tempo) e Voto Generale
-   - Bottone **📋 Copia testo**
+1.  Operatore incolla la trascrizione nel modal → clicca **Salva**
+2.  La trascrizione viene salvata + l'analisi precedente viene cancellata
+3.  Viene avviata automaticamente una chiamata a **Perplexity `sonar-pro`**
+4.  Il pulsante 🔒 Analisi diventa ⏳ Analisi... (disabilitato)
+5.  L'analisi viene salvata nel campo `analisi_call` del record Supabase
+6.  Il pulsante diventa 🎯 Analisi (cyan, cliccabile)
+7.  Cliccando si apre un modal (ora con supporto al rendering Markdown per grassetti e newline) con:
+    -   **Analisi discorsiva** basata sul **Metodo Stoico della Prequalifica** focalizzata sullo spostamento del focus da ciò che si subisce a ciò che si controlla.
+    -   **Aree di miglioramento pratiche**, con esempi e riformulazioni specifiche estratte testualmente dalla trascrizione.
+    -   **📊 PAGELLA DI PERFORMANCE** basata su 6 criteri: FRAME E INVERSIONE POTERE, RACCOLTA DATI BASE, DIAGNOSI 4 AREE + SISTEMA RD, COSTO DELL'INAZIONE, GESTIONE OBIEZIONI, CHIUSURA E NEXT STEP.
+    -   Bottone **📋 Copia testo**
 
 Il prompt segue il **Metodo Stoico** e include le istruzioni del file `01_Call Prequalifica 4Aree - ISTRUZIONI.md` + tutti i dati del record Supabase.
 
@@ -198,24 +198,24 @@ Pagina pubblica (con protezione OTP) che il prospect consulta per leggere la pro
 
 #### Accesso OTP cliente
 
-- L'URL contiene `?id={uuid}` del record in `Checkup_SV`
-- Il prospect deve inserire il codice OTP ricevuto via email (generato dal workflow N8N)
-- Verifica: `simpleHash(otp_input) === otp_hash` + controllo scadenza + `otp_used === false`
-- Dopo verifica: `otp_used = true`, `report_accessed = true`, sessione PHP `$_SESSION["verified_{id}"]`
-- **Passpartout**: codice `220783` bypassa sempre la verifica
-- **Bypass dashboard**: se `?dtok={token}` è presente e valido (HMAC firmato da `dashboard.php`), l'OTP viene saltato
+-   L'URL contiene `?id={uuid}` del record in `Checkup_SV`
+-   Il prospect deve inserire il codice OTP ricevuto via email (generato dal workflow N8N)
+-   Verifica: `simpleHash(otp_input) === otp_hash` + controllo scadenza + `otp_used === false`
+-   Dopo verifica: `otp_used = true`, `report_accessed = true`, sessione PHP `$_SESSION["verified_{id}"]`
+-   **Passpartout**: codice `220783` bypassa sempre la verifica
+-   **Bypass dashboard**: se `?dtok={token}` è presente e valido (HMAC firmato da `dashboard.php`), l'OTP viene saltato
 
 #### Struttura del referto (sezioni)
 
-1. **Header**: nome azienda, data elaborazione, consulente
-2. **Dati Identificativi**: azienda, settore, fatturato, dipendenti, prodotto principale
-3. **Il tuo Consulente**: avatar con iniziali, email, bottoni "📞 Chiama" e "💬 WhatsApp"
-4. **Livello di Maturità Commerciale**: numero grande (1-10/10) + label + progress bar colorata
-5. **Potenziale Economico**: 3 box colorati (Capitale Dormiente, Perdita Pipeline, Costo Inefficienza)
-6. **GAP per Area**: barre duali (realtà vs desiderio) + badge rosso sulla "ferita principale" + **Radar chart** (Chart.js)
-7. **Referto AI**: testo AI (sezione "Terapie Prioritarie" rimossa automaticamente via `strip_terapie()`)
-8. **Terapia in Elaborazione**: 3 step illustrativi del processo successivo
-9. **Valentina AI**: CTA box giallo con link WhatsApp al servizio AI
+1.  **Header**: nome azienda, data elaborazione, consulente
+2.  **Dati Identificativi**: azienda, settore, fatturato, dipendenti, prodotto principale
+3.  **Il tuo Consulente**: avatar con iniziali, email, bottoni "📞 Chiama" e "💬 WhatsApp"
+4.  **Livello di Maturità Commerciale**: numero grande (1-10/10) + label + progress bar colorata + **Legenda "Significato dei Punteggi"**
+5.  **Potenziale Economico**: 3 box colorati (Capitale Dormiente, Perdita Pipeline, Costo Inefficienza)
+6.  **GAP per Area**: barre duali (realtà vs desiderio) + badge rosso sulla "ferita principale" + **Radar chart** (Chart.js)
+7.  **Referto AI**: testo AI (sezione "Terapie Prioritarie" rimossa automaticamente via `strip_terapie()`)
+8.  **Terapia in Elaborazione**: 3 step illustrativi del processo successivo
+9.  **Valentina AI**: CTA box giallo con link WhatsApp al servizio AI
 10. **Riepilogo Dati Completo**: tabelle dettagliate di tutte le risposte del checkup
 11. **Footer**: AIRA-DXTM / Migastone International Srl
 

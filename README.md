@@ -152,9 +152,9 @@ Flusso automatico al salvataggio trascrizione:
 5.  L'analisi viene salvata nel campo `analisi_call` del record Supabase
 6.  Il pulsante diventa 🎯 Analisi (cyan, cliccabile)
 7.  Cliccando si apre un modal (ora con supporto al rendering Markdown per grassetti e newline) con:
-    -   **Analisi discorsiva** basata sul **Metodo Stoico della Prequalifica** focalizzata sullo spostamento del focus da ciò che si subisce a ciò che si controlla.
-    -   **Aree di miglioramento pratiche**, con esempi e riformulazioni specifiche estratte testualmente dalla trascrizione.
-    -   **📊 PAGELLA DI PERFORMANCE** basata su 6 criteri: FRAME E INVERSIONE POTERE, RACCOLTA DATI BASE, DIAGNOSI 4 AREE + SISTEMA RD, COSTO DELL'INAZIONE, GESTIONE OBIEZIONI, CHIUSURA E NEXT STEP.
+    - **Analisi discorsiva** basata sul **Metodo Stoico** della trattativa, focalizzata sull'oggettività e la crescita del consulente.
+    - **Aree di miglioramento pratiche**, con schemi obbligatori (Cosa è successo / Perché non è ottimale / Come potevi dirlo) e citazioni testuali.
+    - **📊 PAGELLA DI PERFORMANCE** basata su 6 criteri: FRAME DI APERTURA, RACCOLTA DEI DATI, ANALISI EMORRAGIA/DOLORE, GESTIONE PROPOSTA, GESTIONE OBIEZIONI, GESTIONE TEMPO.
     -   Bottone **📋 Copia testo**
 
 Il prompt segue il **Metodo Stoico** e include le istruzioni del file `01_Call Prequalifica 4Aree - ISTRUZIONI.md` + tutti i dati del record Supabase.

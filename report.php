@@ -1142,6 +1142,7 @@ if ($record) {
       $settore = htmlspecialchars($record['cliente_settore'] ?? '—');
       $fatt = htmlspecialchars($record['cliente_fatturato'] ?? '—');
       $dip = htmlspecialchars($record['cliente_dipendenti'] ?? '—');
+      $prov = htmlspecialchars($record['cliente_provincia'] ?? '—');
       $prod = htmlspecialchars($record['prodotto_principale'] ?? '—');
       $cons = htmlspecialchars($record['consulente_nome'] ?? '—');
       $created = fmt_date($record['created_at'] ?? '');
@@ -1194,6 +1195,10 @@ if ($record) {
           <div>
             <dt>Dipendenti</dt>
             <dd><?= $dip ?></dd>
+          </div>
+          <div>
+            <dt>Provincia</dt>
+            <dd><?= $prov ?></dd>
           </div>
           <div style="grid-column:1/-1">
             <dt>Prodotto / Servizio principale</dt>
@@ -1540,8 +1545,9 @@ if ($record) {
             <tr><td>Azienda</td><td><?= rv($record['cliente_azienda']) ?></td><td>Referente</td><td><?= rv($record['cliente_nome']) ?></td></tr>
             <tr><td>Email cliente</td><td><?= rv($record['cliente_email']) ?></td><td>Sito web</td><td><?= rv($record['cliente_sito_web']) ?></td></tr>
             <tr><td>Partita IVA</td><td><?= rv($record['cliente_partita_iva']) ?></td><td>Settore</td><td><?= rv($record['cliente_settore']) ?></td></tr>
-            <tr><td>Fascia fatturato</td><td><?= rv($record['cliente_fatturato']) ?></td><td>Dipendenti</td><td><?= rv($record['cliente_dipendenti']) ?></td></tr>
-            <tr><td>Venditori interni</td><td><?= rn($record['venditori_interni']) ?></td><td>Consulente</td><td><?= rv($record['consulente_nome']) ?> (<?= rv($record['consulente_email']) ?>)</td></tr>
+            <tr><td>Provincia</td><td><?= rv($record['cliente_provincia']) ?></td><td>Fascia fatturato</td><td><?= rv($record['cliente_fatturato']) ?></td></tr>
+            <tr><td>Dipendenti</td><td><?= rv($record['cliente_dipendenti']) ?></td><td>Venditori interni</td><td><?= rn($record['venditori_interni']) ?></td></tr>
+            <tr><td>Consulente</td><td colspan="3"><?= rv($record['consulente_nome']) ?> (<?= rv($record['consulente_email']) ?>)</td></tr>
             <tr><td colspan="4">Prodotto / Servizio principale: <?= rv($record['prodotto_principale']) ?></td></tr>
           </table>
         </div>

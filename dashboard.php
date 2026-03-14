@@ -304,7 +304,7 @@ if ($operator) {
     // Filter
     $filter_op = trim($_GET['op'] ?? $operator['email']);
 
-    $q = 'Checkup_SV?select=id,created_at,consulente_nome,consulente_email,cliente_nome,cliente_email,cliente_azienda,cliente_partita_iva,cliente_cellulare,ferita_principale_label,gap_totale,livello_maturita,trascrizione,analisi_call,offerta_doc_url,offerta_generata_at,offerta_in_elaborazione&order=created_at.desc';
+    $q = 'Checkup_SV?select=id,created_at,consulente_nome,consulente_email,cliente_nome,cliente_email,cliente_azienda,cliente_partita_iva,cliente_cellulare,ferita_principale_label,gap_totale,livello_maturita,trascrizione,analisi_call,offerta_doc_url,offerta_generata_at,offerta_in_elaborazione,trascrizione_b&order=created_at.desc';
     if ($filter_op && $filter_op !== 'all') {
         $q .= '&consulente_email=eq.' . urlencode($filter_op);
     }
@@ -325,6 +325,21 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'trascrizione' && $_S
     }
     // Salva trascrizione + azzera analisi precedente (verrà rigenerata dal frontend)
     $ok = sb_patch('Checkup_SV?id=eq.' . $rid, ['trascrizione' => $text, 'analisi_call' => null]);
+    echo json_encode(['ok' => $ok, 'msg' => $ok ? 'Salvato correttamente.' : 'Errore durante il salvataggio.']);
+    exit;
+}
+
+// ─── AJAX: save trascrizione_b (Call B — presentazione offerta) ──────────
+if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'trascrizione_b' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    $body = json_decode(file_get_contents('php://input'), true);
+    $rid = preg_replace('/[^a-f0-9\-]/', '', $body['id'] ?? '');
+    $text = $body['trascrizione_b'] ?? '';
+    if (!$rid) {
+        echo json_encode(['ok' => false, 'msg' => 'ID non valido']);
+        exit;
+    }
+    $ok = sb_patch('Checkup_SV?id=eq.' . $rid, ['trascrizione_b' => $text]);
     echo json_encode(['ok' => $ok, 'msg' => $ok ? 'Salvato correttamente.' : 'Errore durante il salvataggio.']);
     exit;
 }
@@ -393,7 +408,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'edit_checkup' && $_S
     $patch_data = [];
 
     // Campi scalari diretti
-    $scalar_fields = ['cliente_nome', 'cliente_azienda', 'cliente_email', 'cliente_cellulare', 'cliente_sito_web', 'cliente_partita_iva', 'cliente_settore', 'cliente_fatturato', 'cliente_dipendenti'];
+    $scalar_fields = ['cliente_nome', 'cliente_azienda', 'cliente_email', 'cliente_cellulare', 'cliente_sito_web', 'cliente_partita_iva', 'cliente_provincia', 'cliente_settore', 'cliente_fatturato', 'cliente_dipendenti'];
     foreach ($scalar_fields as $f) {
         if (array_key_exists($f, $body))
             $patch_data[$f] = $body[$f];
@@ -1201,6 +1216,50 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             color: #fff;
         }
 
+        /* ── ICONE TEL/WA INLINE nella colonna Cliente ── */
+        .client-contact-icons {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .client-contact-icons a,
+        .client-contact-icons span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-decoration: none;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .icon-tel {
+            background: #1B3A6B;
+            color: #fff;
+        }
+        .icon-tel:hover { opacity: .85; }
+        .icon-wa {
+            background: #25D366;
+            color: #fff;
+        }
+        .icon-wa:hover { opacity: .85; }
+        .icon-disabled {
+            background: #E2E8F0;
+            color: #94A3B8;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        .icon-wa svg { width: 13px; height: 13px; }
+
+        /* ── BTN TRASCRIZIONE B / ANALISI B ── */
+        .btn-trascr-b { background: #7C3AED; color: #fff; }
+        .btn-trascr-b:hover { background: #6D28D9; }
+        .has-trascr-b { background: #059669; color: #fff; }
+        .btn-analisi-b { background: #94A3B8; color: #fff; cursor: not-allowed; opacity: .6; }
+
         .btn-offerta {
             background: #EA580C;
             color: #fff;
@@ -1903,9 +1962,9 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                     <th>Report</th>
                                     <th>Trascrizione</th>
                                     <th>Analisi Call</th>
-                                    <th>Telefono</th>
-                                    <th>WhatsApp</th>
                                     <th>Offerta</th>
+                                    <th>Trascr. B</th>
+                                    <th>Analisi B</th>
                                     <th>Cancella</th>
                                 </tr>
                             </thead>
@@ -1932,6 +1991,15 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                         </td>
                                         <td>
                                             <?= htmlspecialchars($row['cliente_nome'] ?? '—') ?>
+                                            <span class="client-contact-icons">
+                                                <?php if ($cellulare): ?>
+                                                    <a class="icon-tel" href="tel:<?= htmlspecialchars($cellulare) ?>" title="Chiama <?= htmlspecialchars($cellulare) ?>">📞</a>
+                                                    <a class="icon-wa" href="https://wa.me/<?= $wa_num ?>" target="_blank" rel="noopener" title="WhatsApp <?= htmlspecialchars($cellulare) ?>"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.528 5.845L.057 23.428a.5.5 0 0 0 .609.61l5.652-1.485A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.802 9.802 0 0 1-5.012-1.374l-.36-.213-3.712.976.993-3.624-.236-.373A9.817 9.817 0 0 1 2.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg></a>
+                                                <?php else: ?>
+                                                    <span class="icon-disabled" title="Cellulare non disponibile">📞</span>
+                                                    <span class="icon-disabled" title="Cellulare non disponibile"><svg viewBox="0 0 24 24" fill="currentColor" style="width:13px;height:13px;"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.528 5.845L.057 23.428a.5.5 0 0 0 .609.61l5.652-1.485A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.802 9.802 0 0 1-5.012-1.374l-.36-.213-3.712.976.993-3.624-.236-.373A9.817 9.817 0 0 1 2.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z"/></svg></span>
+                                                <?php endif; ?>
+                                            </span>
                                         </td>
                                         <td class="td-piva">
                                             <?= htmlspecialchars($row['cliente_partita_iva'] ?? '—') ?>
@@ -1990,33 +2058,6 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                                 <?= $has_analisi ? '🎯 Analisi' . htmlspecialchars($voto_txt) : '🔒 Analisi' ?>
                                             </button>
                                         </td>
-                                        <!-- Tel -->
-                                        <td>
-                                            <?php if ($cellulare): ?>
-                                                <a class="btn-action btn-tel" href="tel:<?= htmlspecialchars($cellulare) ?>">📞
-                                                    Chiama</a>
-                                            <?php else: ?>
-                                                <button class="btn-action btn-tel" disabled title="Cellulare non disponibile">📞
-                                                    Chiama</button>
-                                            <?php endif; ?>
-                                        </td>
-                                        <!-- WA -->
-                                        <td>
-                                            <?php if ($wa_num): ?>
-                                                <a class="btn-action btn-wa" href="https://wa.me/<?= $wa_num ?>" target="_blank"
-                                                    rel="noopener">
-                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                                                        <path
-                                                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347" />
-                                                        <path
-                                                            d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.528 5.845L.057 23.428a.5.5 0 0 0 .609.61l5.652-1.485A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.802 9.802 0 0 1-5.012-1.374l-.36-.213-3.712.976.993-3.624-.236-.373A9.817 9.817 0 0 1 2.182 12C2.182 6.57 6.57 2.182 12 2.182S21.818 6.57 21.818 12 17.43 21.818 12 21.818z" />
-                                                    </svg>
-                                                    WA
-                                                </a>
-                                            <?php else: ?>
-                                                <button class="btn-action btn-wa" disabled title="Cellulare non disponibile">WA</button>
-                                            <?php endif; ?>
-                                        </td>
                                         <!-- Offerta -->
                                         <td>
                                             <div class="offerta-cell">
@@ -2043,6 +2084,24 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                                     <?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
+                                        </td>
+                                        <!-- Trascrizione B (Call presentazione offerta) -->
+                                        <td>
+                                            <?php
+                                            $has_trascr_b = !empty(trim($row['trascrizione_b'] ?? ''));
+                                            $trascr_b_esc = htmlspecialchars($row['trascrizione_b'] ?? '', ENT_QUOTES);
+                                            ?>
+                                            <button class="btn-action btn-trascr-b<?= $has_trascr_b ? ' has-trascr-b' : '' ?>"
+                                                onclick="openTrascrizioneB('<?= htmlspecialchars($rid, ENT_QUOTES) ?>','<?= $az_esc ?>',this)"
+                                                data-id="<?= htmlspecialchars($rid, ENT_QUOTES) ?>" data-text-b="<?= $trascr_b_esc ?>">
+                                                <?= $has_trascr_b ? '✅ Trascr. B' : '📝 Trascr. B' ?>
+                                            </button>
+                                        </td>
+                                        <!-- Analisi B (placeholder — disabilitato) -->
+                                        <td>
+                                            <button class="btn-action btn-analisi-b" disabled title="Funzionalità in arrivo">
+                                                🔒 Analisi B
+                                            </button>
                                         </td>
                                         <!-- Cancella -->
                                         <td>
@@ -2133,6 +2192,24 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
             </div>
         </div>
 
+        <!-- ══ MODALE TRASCRIZIONE B (Call presentazione offerta) ══ -->
+        <div class="modal-overlay" id="modal-trascr-b" onclick="closeModalTrascrB(event)">
+            <div class="modal-box" id="modal-trascr-b-box">
+                <div class="modal-header" style="background:#7C3AED;">
+                    <h3 id="modal-trascr-b-title">Trascrizione B</h3>
+                    <button class="modal-close" onclick="closeTrascrizioneB()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <textarea id="modal-trascr-b-text" placeholder="Incolla qui la trascrizione della call di presentazione offerta..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-save" id="btn-salva-trascr-b" style="background:#7C3AED;" onclick="saveTrascrizioneB()">💾 Salva</button>
+                    <button class="btn-cancel" id="btn-chiudi-trascr-b" onclick="closeTrascrizioneB()">Chiudi</button>
+                    <span class="modal-msg" id="modal-trascr-b-msg"></span>
+                </div>
+            </div>
+        </div>
+
         <!-- ══ MODALE EDIT DATA ══ -->
         <div class="modal-overlay" id="modal-edit-chk" onclick="closeModalEdit(event)">
             <div class="modal-box" id="modal-edit-box"
@@ -2164,6 +2241,8 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                                         id="e_cliente_sito_web"></div>
                                 <div><label class="form-lbl">Partita IVA</label><input type="text" class="form-inp"
                                         id="e_cliente_partita_iva"></div>
+                                <div><label class="form-lbl">Provincia</label><input type="text" class="form-inp"
+                                        id="e_cliente_provincia" placeholder="es: MI, RM, NA" maxlength="2"></div>
                                 <div><label class="form-lbl">Settore</label><input type="text" class="form-inp"
                                         id="e_cliente_settore"></div>
                                 <div><label class="form-lbl">Dipendenti</label><input type="text" class="form-inp"
@@ -2662,6 +2741,82 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
                     });
             }
 
+            // ── TRASCRIZIONE B (Call presentazione offerta) ──────────────
+            var _currentTrascrBId = null;
+
+            function openTrascrizioneB(id, azienda, btn) {
+                _currentTrascrBId = id;
+                var text = btn.getAttribute('data-text-b') || '';
+                document.getElementById('modal-trascr-b-title').textContent = 'Trascrizione B — ' + azienda;
+                document.getElementById('modal-trascr-b-text').value = text;
+                document.getElementById('modal-trascr-b-msg').textContent = '';
+                document.getElementById('btn-salva-trascr-b').disabled = false;
+                document.getElementById('btn-chiudi-trascr-b').disabled = false;
+                document.getElementById('modal-trascr-b-text').disabled = false;
+                document.getElementById('modal-trascr-b').classList.add('open');
+            }
+
+            function closeTrascrizioneB() {
+                if (document.getElementById('btn-chiudi-trascr-b').disabled) return;
+                document.getElementById('modal-trascr-b').classList.remove('open');
+            }
+
+            function closeModalTrascrB(e) {
+                if (e.target && e.target.id === 'modal-trascr-b') closeTrascrizioneB();
+            }
+
+            function saveTrascrizioneB() {
+                var text = document.getElementById('modal-trascr-b-text').value;
+                var savedId = _currentTrascrBId;
+                var msgEl = document.getElementById('modal-trascr-b-msg');
+                msgEl.textContent = '⏳ Salvataggio...';
+                msgEl.style.color = '#64748B';
+                document.getElementById('btn-salva-trascr-b').disabled = true;
+                document.getElementById('btn-chiudi-trascr-b').disabled = true;
+                document.getElementById('modal-trascr-b-text').disabled = true;
+
+                fetch('dashboard.php?ajax=trascrizione_b', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: savedId, trascrizione_b: text })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    document.getElementById('btn-salva-trascr-b').disabled = false;
+                    document.getElementById('btn-chiudi-trascr-b').disabled = false;
+                    document.getElementById('modal-trascr-b-text').disabled = false;
+                    if (data.ok) {
+                        msgEl.style.color = '#059669';
+                        msgEl.textContent = '✅ Salvato!';
+                        // Aggiorna bottone nella tabella
+                        var btns = document.querySelectorAll('[data-id="' + savedId + '"]');
+                        btns.forEach(function(b) {
+                            if (b.classList.contains('btn-trascr-b') || b.classList.contains('has-trascr-b')) {
+                                b.setAttribute('data-text-b', text);
+                                if (text.trim()) {
+                                    b.classList.add('has-trascr-b');
+                                    b.innerHTML = '✅ Trascr. B';
+                                } else {
+                                    b.classList.remove('has-trascr-b');
+                                    b.innerHTML = '📝 Trascr. B';
+                                }
+                            }
+                        });
+                        setTimeout(function() { closeTrascrizioneB(); }, 800);
+                    } else {
+                        msgEl.style.color = '#DC2626';
+                        msgEl.textContent = '❌ ' + (data.msg || 'Errore');
+                    }
+                })
+                .catch(function(err) {
+                    document.getElementById('btn-salva-trascr-b').disabled = false;
+                    document.getElementById('btn-chiudi-trascr-b').disabled = false;
+                    document.getElementById('modal-trascr-b-text').disabled = false;
+                    msgEl.style.color = '#DC2626';
+                    msgEl.textContent = '❌ Errore di rete: ' + err.message;
+                });
+            }
+
             // Chiama Perplexity e salva in DB — callback(ok, resultOrErrorMsg)
             function _generateAnalisi(id, cb) {
                 fetch('dashboard.php?ajax=analisi_call', {
@@ -3142,7 +3297,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
     </script>
 
     <footer class="footer-version">
-        AIRA-DXTM v2.1.0 — Pubblicato il 2026-03-14 10:33
+        AIRA-DXTM v2.2.0 — Pubblicato il 2026-03-14 18:00 — Icone tel/WA inline, Trascrizione B, Analisi B, Provincia
     </footer>
 
 </body>

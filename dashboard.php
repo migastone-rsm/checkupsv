@@ -3142,7 +3142,7 @@ if ($operator && isset($_GET['ajax']) && $_GET['ajax'] === 'get_analisi' && $_SE
     </script>
 
     <footer class="footer-version">
-        AIRA-DXTM v2.1.0 — Pubblicato il 2026-03-13 18:32
+        AIRA-DXTM v2.1.0 — Pubblicato il 2026-03-14 10:33
     </footer>
 
 </body>
